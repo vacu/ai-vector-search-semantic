@@ -1,0 +1,13 @@
+{
+  "landingPage": "/wp-admin/admin.php?page=aivesese",
+  "steps": [
+    {
+      "step": "installPlugin",
+      "pluginZipFile": "ai-vector-search-semantic.zip"
+    },
+    {
+      "step": "activatePlugin",
+      "pluginFile": "ai-vector-search-semantic/ai-vector-search-semantic.php"
+    }
+  ]
+}
