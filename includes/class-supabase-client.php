@@ -67,7 +67,7 @@ class AIVectorSearch_Supabase_Client {
                 'Authorization' => 'Bearer ' . get_option('aivesese_key'),
                 'Content-Type' => 'application/json',
             ],
-            'timeout' => 12,
+            'timeout' => 20,
         ];
 
         if ($body) {
@@ -152,15 +152,33 @@ class AIVectorSearch_Supabase_Client {
         }
 
         $params = [
-            'select' => 'woocommerce_id',
-            'store_id' => 'eq.' . $store,
-            'index_data' => 'wfts.simple.' . $term,
-            'order' => 'fts.rank().desc',
-            'limit' => max(1, min($limit, 50)),
+            'search_store_id' => $store,
+            'search_term' => $term,
+            'search_limit' => $limit
         ];
 
         $cache_key = 'fts_' . $store . '_' . $limit . '_' . md5($term);
-        $rows = $this->request('GET', '/rest/v1/search_indexes', null, $params, $cache_key, 20);
+        $rows = $this->request('POST', '/rest/v1/rpc/fts_search', $params, [], $cache_key, 20);
+
+        error_log(print_r($rows, true));
+
+        return wp_list_pluck((array) $rows, 'woocommerce_id');
+    }
+
+    public function search_products_sku(string $term, int $limit = 20): array {
+        $store = get_option('aivesese_store');
+        if (!$store || mb_strlen($term) < 2) {
+            return [];
+        }
+
+        $params = [
+            'search_store_id' => $store,
+            'search_term' => $term,
+            'search_limit' => $limit
+        ];
+
+        $cache_key = 'sku_' . $store . '_' . $limit . '_' . md5($term);
+        $rows = $this->request('POST', '/rest/v1/rpc/sku_search', $params, [], $cache_key, 20);
 
         return wp_list_pluck((array) $rows, 'woocommerce_id');
     }
@@ -174,7 +192,7 @@ class AIVectorSearch_Supabase_Client {
         $rows = $this->request('POST', '/rest/v1/rpc/semantic_search', [
             'store_id' => $store,
             'query_embedding' => $embedding,
-            'match_threshold' => 0.35,
+            'match_threshold' => 0.5,
             'p_k' => $limit,
         ], [], 'sem_' . md5($term), 20);
 

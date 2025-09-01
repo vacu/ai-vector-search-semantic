@@ -41,6 +41,7 @@ class AIVectorSearch_Admin_Interface {
             'auto_sync' => 'Auto-sync products on save',
             'enable_pdp_similar' => 'PDP "Similar products"',
             'enable_cart_below' => 'Below-cart recommendations',
+            'enable_woodmart_integration' => 'Woodmart live search integration',
         ];
 
         foreach ($settings as $id => $label) {
@@ -66,9 +67,9 @@ class AIVectorSearch_Admin_Interface {
         ];
 
         // Special handling for checkboxes
-        if (in_array($id, ['semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below'])) {
+        if (in_array($id, ['semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration'])) {
             $config['sanitize_callback'] = function($v) { return $v === '1' ? '1' : '0'; };
-            $config['default'] = '1';
+            $config['default'] = $id === 'enable_woodmart_integration' ? '0' : '1'; // Default OFF for Woodmart
         }
 
         register_setting('aivesese_settings', "aivesese_{$id}", $config);
@@ -81,6 +82,7 @@ class AIVectorSearch_Admin_Interface {
             'auto_sync' => 'Auto-sync products - Automatically sync products when saved/updated',
             'enable_pdp_similar' => 'PDP "Similar products" - Show similar products on product pages',
             'enable_cart_below' => 'Below-cart recommendations - Show recommendations under cart',
+            'enable_woodmart_integration' => 'Woodmart live search integration - Enable AI search for Woodmart AJAX search',
         ];
 
         foreach ($text_fields as $id) {
@@ -291,6 +293,7 @@ class AIVectorSearch_Admin_Interface {
             'Supabase URL' => get_option('aivesese_url'),
             'Semantic Search' => get_option('aivesese_semantic_toggle') === '1' ? '✅ Enabled' : '❌ Disabled',
             'OpenAI Key' => get_option('aivesese_openai') ? '✅ Configured' : '❌ Not set',
+            'Woodmart Integration' => $this->get_woodmart_status(),
         ];
 
         foreach ($config_items as $label => $value) {
@@ -300,13 +303,28 @@ class AIVectorSearch_Admin_Interface {
             if (in_array($label, ['Store ID', 'Supabase URL'])) {
                 echo '<code>' . esc_html($value) . '</code>';
             } else {
-                echo esc_html($value);
+                echo wp_kses_post($value);
             }
             echo '</td>';
             echo '</tr>';
         }
 
         echo '</tbody></table>';
+    }
+
+    private function get_woodmart_status(): string {
+        $is_enabled = get_option('aivesese_enable_woodmart_integration', '0') === '1';
+        $is_woodmart_active = defined('WOODMART_THEME_DIR') || wp_get_theme()->get('Name') === 'Woodmart';
+
+        if (!$is_woodmart_active) {
+            return '⚪ Woodmart not detected';
+        }
+
+        if ($is_enabled) {
+            return '✅ Enabled (Woodmart detected)';
+        }
+
+        return '❌ Disabled (Woodmart available)';
     }
 
     private function render_quick_actions() {

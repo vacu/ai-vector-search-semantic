@@ -26,20 +26,47 @@ class AIVectorSearch_Search_Handler {
     }
 
     public function intercept_product_search(WP_Query $query) {
-        if (is_admin() || 'product' !== $query->get('post_type')) {
+        if (is_admin()) {
             return;
         }
 
-        $search_term = $query->get('s');
+        // Handle both regular search and AJAX search (including Woodmart)
+        $search_term = '';
+
+        // Regular WordPress search
+        if ($query->is_search()) {
+            if (!$query->get('post_type')) {
+                $query->set('post_type', ['product']);
+            }
+            $search_term = $query->get('s');
+        }
+
+        // AJAX search (Woodmart and others) - only if integration is enabled
+        if (wp_doing_ajax() && isset($_REQUEST['query'])) {
+            // Check if Woodmart integration is enabled
+            if (get_option('aivesese_enable_woodmart_integration', '0') !== '1') {
+                return; // Skip AJAX integration if disabled
+            }
+
+            $search_term = sanitize_text_field(wp_unslash($_REQUEST['query']));
+
+            // Ensure we're dealing with products
+            if (!$query->get('post_type') || $query->get('post_type') === 'product') {
+                $query->set('post_type', ['product']);
+            }
+        }
+
         if (!$search_term || strlen($search_term) < 3) {
             return;
         }
 
         $product_ids = $this->search_products($search_term);
-        if (!$product_ids) {
+        if (empty($product_ids)) {
             return;
         }
 
+        // Clear the search term to prevent WordPress from doing its own search
+        $query->set('s', '');
         $query->set('post__in', $product_ids);
         $query->set('orderby', 'post__in');
         $query->set('posts_per_page', 20);
@@ -50,12 +77,36 @@ class AIVectorSearch_Search_Handler {
 
         if ($use_semantic) {
             $ids = $this->search_semantic($term, $limit);
-            if ($ids) {
-                return $ids;
+
+            if (count($ids) < 5) {
+                $ids = array_unique(array_merge(
+                    $ids,
+                    $this->search_fulltext($term, $limit)
+                ));
             }
+
+            // If still no results, try SKU search as fallback
+            if (empty($ids)) {
+                $ids = $this->search_sku($term, $limit);
+            }
+
+            return $ids;
         }
 
-        return $this->search_fulltext($term, $limit);
+        // For non-semantic search
+        $ids = $this->search_fulltext($term, $limit);
+
+        // If no results from full-text search, try SKU search as fallback
+        if (empty($ids)) {
+            $ids = $this->search_sku($term, $limit);
+        }
+
+        return $ids;
+    }
+
+    // Add this new method
+    private function search_sku(string $term, int $limit): array {
+        return $this->supabase_client->search_products_sku($term, $limit);
     }
 
     private function search_semantic(string $term, int $limit): array {

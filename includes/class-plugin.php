@@ -71,6 +71,7 @@ class AIVectorSearch_Plugin {
             'aivesese_auto_sync' => '0',
             'aivesese_enable_pdp_similar' => '1',
             'aivesese_enable_cart_below' => '1',
+            'aivesese_enable_woodmart_integration' => '0',
         ];
 
         foreach ($defaults as $option => $default_value) {
