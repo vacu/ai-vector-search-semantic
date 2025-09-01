@@ -4,7 +4,7 @@ Tags: woocommerce, search, recommendations, supabase, embeddings
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable Tag: 0.15.1
+Stable Tag: 0.15.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,9 @@ It hooks into search and related‑products logic with standard filters/actions.
 Yes. The Premium setup service can include custom field mapping and category normalization.
 
 == Changelog ==
+= 0.15.2 =
+Updated SQL
+Added interface notification
 = 0.15.1 =
 Added Woodmart search integration.
 Fixed search.
@@ -117,6 +120,9 @@ Added auto-generation of UUID (store id)
 * Initial public release
 
 == Upgrade Notice ==
+= 0.15.2 =
+Updated SQL
+Added interface notification
 = 0.15.1 =
 Added Woodmart search integration.
 Fixed search.

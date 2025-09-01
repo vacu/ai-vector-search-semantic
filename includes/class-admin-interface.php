@@ -26,8 +26,8 @@ class AIVectorSearch_Admin_Interface {
         add_action('admin_menu', [$this, 'add_admin_pages']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('admin_notices', [$this, 'show_services_banner']);
-        add_action('admin_notices', [$this, 'show_health_fix_notice']);
-        add_action('admin_init', [$this, 'handle_health_fix_dismiss']);
+        add_action('admin_notices', [$this, 'show_sql_update_notice']);
+        add_action('admin_init', [$this, 'handle_sql_update_dismiss']);
         add_action('wp_ajax_aivesese_toggle_help', [$this, 'handle_help_toggle']);
     }
 
@@ -504,6 +504,10 @@ class AIVectorSearch_Admin_Interface {
     }
 
     private function render_setup_instructions() {
+        echo '<div class="notice notice-info inline" style="margin: 10px 0; padding: 10px;">';
+        echo '<p><strong>🆕 SQL Updated!</strong> New version includes partial SKU search and Woodmart integration support.</p>';
+        echo '</div>';
+
         echo '<h2>' . esc_html__('How to find your Supabase credentials:', 'ai-vector-search-semantic') . '</h2>';
         echo '<ol>';
         echo '<li>' . sprintf(
@@ -526,12 +530,22 @@ class AIVectorSearch_Admin_Interface {
         $sql_content = $this->get_sql_content();
 
         echo '<hr>';
-        echo '<h2>' . esc_html__('Install the SQL in Supabase', 'ai-vector-search-semantic') . '</h2>';
+        echo '<div class="notice notice-success inline" style="margin: 15px 0; padding: 12px; border-left: 4px solid #46b450;">';
+        echo '<h3 style="margin-top: 0;">🎉 Enhanced SQL Schema (v2.0)</h3>';
+        echo '<p><strong>New in this version:</strong></p>';
+        echo '<ul style="margin-left: 20px;">';
+        echo '<li>✨ <code>sku_search()</code> function for partial SKU matching</li>';
+        echo '<li>🔍 Enhanced <code>fts_search()</code> with better ranking</li>';
+        echo '<li>🚀 Optimized indexes for faster search performance</li>';
+        echo '</ul>';
+        echo '</div>';
+
+        echo '<h2>' . esc_html__('Install/Update the SQL in Supabase', 'ai-vector-search-semantic') . '</h2>';
         echo '<ol>';
         echo '<li>' . esc_html__('Open your Supabase project → SQL Editor → New query.', 'ai-vector-search-semantic') . '</li>';
         echo '<li>' . esc_html__('Click "Copy SQL" below and paste it into the editor.', 'ai-vector-search-semantic') . '</li>';
         echo '<li>' . esc_html__('Press RUN and wait for success.', 'ai-vector-search-semantic') . '</li>';
-        echo '<li>' . esc_html__('Verify tables/views, RPCs and extensions were created.', 'ai-vector-search-semantic') . '</li>';
+        echo '<li><strong>' . esc_html__('✅ Safe to re-run: This SQL uses CREATE OR REPLACE and IF NOT EXISTS.', 'ai-vector-search-semantic') . '</strong></li>';
         echo '</ol>';
 
         if (!$sql_content) {
@@ -539,11 +553,11 @@ class AIVectorSearch_Admin_Interface {
                 esc_html__('Could not find supabase.sql. Place it at assets/sql/supabase.sql (recommended).', 'ai-vector-search-semantic') .
                 '</p></div>';
         } else {
-            echo '<p><button class="button button-primary" id="ai-copy-sql">Copy SQL</button> ';
+            echo '<p><button class="button button-primary" id="ai-copy-sql">📋 Copy Updated SQL</button> ';
             echo '<small style="opacity:.75;margin-left:.5rem">' .
-                esc_html__('Paste into Supabase → SQL Editor.', 'ai-vector-search-semantic') .
+                esc_html__('Paste into Supabase → SQL Editor and run it.', 'ai-vector-search-semantic') .
                 '</small></p>';
-            echo '<textarea id="ai-sql" rows="22" style="width:100%;font-family:Menlo,Consolas,monospace" readonly>' .
+            echo '<textarea id="ai-sql" rows="22" style="width:100%;font-family:Menlo,Consolas,monospace;border:2px solid #46b450;" readonly>' .
                 esc_textarea($sql_content) .
                 '</textarea>';
             echo '<p id="ai-copy-status" style="display:none;margin-top:.5rem;"></p>';
@@ -560,7 +574,17 @@ class AIVectorSearch_Admin_Interface {
 
         foreach ($candidates as $path) {
             if (file_exists($path)) {
-                return file_get_contents($path);
+                $content = file_get_contents($path);
+
+                // Add version header if not present
+                if (strpos($content, '-- AI Vector Search SQL v2.0') === false) {
+                    $version_header = "-- AI Vector Search SQL v2.0 - Updated with SKU search and enhanced FTS\n" .
+                                    "-- Run this entire script in Supabase SQL Editor\n" .
+                                    "-- New features: Partial SKU search, Better ranking, Woodmart integration\n\n";
+                    $content = $version_header . $content;
+                }
+
+                return $content;
             }
         }
 
@@ -635,54 +659,6 @@ class AIVectorSearch_Admin_Interface {
                 <a href="https://zzzsolutions.ro" target="_blank" rel="noopener noreferrer"
                    class="button button-primary">See Services</a>
             </div>';
-    }
-
-    public function show_health_fix_notice() {
-        if (!current_user_can('manage_options') || get_option('aivesese_health_fix_dismissed')) {
-            return;
-        }
-
-        $local = (int) wp_count_posts('product')->publish;
-        $remote = 0;
-
-        $resp = $this->supabase_client->request(
-            'POST',
-            '/rest/v1/rpc/store_health_check',
-            ['check_store_id' => get_option('aivesese_store_id')]
-        );
-
-        if ($resp && isset($resp[0]['published_products'])) {
-            $remote = (int) $resp[0]['published_products'];
-        }
-
-        if ($local === 0 || $remote > 0) {
-            return;
-        }
-
-        $this->render_health_fix_notice_content($local);
-    }
-
-    private function render_health_fix_notice_content(int $local_count) {
-        $sql = $this->get_health_fix_sql();
-
-        echo '<div class="notice notice-error">';
-        echo '<p><strong>AI Vector Search - Dashboard is broken ⚠️</strong></p>';
-        echo '<p>Supabase is still reporting <code>0</code> published products while WooCommerce has <strong>' .
-             esc_html($local_count) . '</strong>. We screwed up the SQL function. Run the snippet below once, then reload this page.</p>';
-        echo '<textarea readonly rows="12" style="width:100%;font-family:monospace;">' .
-             esc_textarea($sql) . '</textarea>';
-        echo '<p><a href="' .
-             esc_url(wp_nonce_url(add_query_arg('aivesese_fix_dismiss', 1), 'aivesese_fix_nonce')) .
-             '" class="button">Dismiss (I\'ve fixed it)</a></p>';
-        echo '</div>';
-    }
-
-    public function handle_health_fix_dismiss() {
-        if (isset($_GET['aivesese_fix_dismiss']) && check_admin_referer('aivesese_fix_nonce')) {
-            update_option('aivesese_health_fix_dismissed', time());
-            wp_safe_redirect(remove_query_arg(['aivesese_fix_dismiss', '_wpnonce']));
-            exit;
-        }
     }
 
     public function handle_help_toggle() {
@@ -760,27 +736,53 @@ class AIVectorSearch_Admin_Interface {
         });";
     }
 
-    private function get_health_fix_sql(): string {
-        return "-- Paste this in Supabase SQL Editor (SQL v0.14+)
-DROP FUNCTION IF EXISTS store_health_check(uuid);
+    public function show_sql_update_notice() {
+        if (!current_user_can('manage_options') || get_option('aivesese_sql_v2_dismissed')) {
+            return;
+        }
 
-CREATE FUNCTION store_health_check(check_store_id uuid)
-RETURNS TABLE (
-    total_products         integer,
-    published_products     integer,
-    in_stock_products      integer,
-    with_embeddings        integer,
-    avg_embedding_quality  integer
-) LANGUAGE sql STABLE AS
-\$\$
-SELECT
-    COUNT(*)                                                  AS total_products,
-    COUNT(*) FILTER (WHERE status = 'publish')                AS published_products,
-    COUNT(*) FILTER (WHERE stock_status = 'in')               AS in_stock_products,
-    COUNT(*) FILTER (WHERE embedding IS NOT NULL)             AS with_embeddings,
-    COALESCE(AVG(vector_dims(embedding)),0)::int             AS avg_embedding_quality
-FROM products
-WHERE store_id = check_store_id;
-\$\$;";
+        // Only show on relevant admin pages
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        $allowed_screens = [
+            'settings_page_aivesese',
+            'settings_page_aivesese-status',
+            'settings_page_aivesese-sync',
+            'plugins'
+        ];
+
+        if (!$screen || !in_array($screen->id, $allowed_screens, true)) {
+            return;
+        }
+
+        echo '<div class="notice notice-warning is-dismissible">';
+        echo '<h3>🔄 AI Vector Search - SQL Update Required</h3>';
+        echo '<p><strong>New features added!</strong> We\'ve enhanced the search with:</p>';
+        echo '<ul style="margin-left: 20px;">';
+        echo '<li>✨ <strong>Partial SKU search</strong> - Find products by typing part of the SKU</li>';
+        echo '<li>🎯 <strong>Better search ranking</strong> - More relevant results</li>';
+        echo '<li>🚀 <strong>Woodmart live search integration</strong> - Enable in settings</li>';
+        echo '</ul>';
+        echo '<p><strong>Action required:</strong> Please update your Supabase SQL to get these features:</p>';
+        echo '<ol style="margin-left: 20px;">';
+        echo '<li>Go to <a href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '"><strong>Settings → AI Supabase</strong></a></li>';
+        echo '<li>Expand the <strong>"Setup Guide"</strong> section</li>';
+        echo '<li>Copy the updated SQL and run it in <strong>Supabase → SQL Editor</strong></li>';
+        echo '<li>The new functions will be added/updated automatically</li>';
+        echo '</ol>';
+        echo '<p>';
+        echo '<a href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '" class="button button-primary">Update SQL Now</a> ';
+        echo '<a href="' .
+            esc_url(wp_nonce_url(add_query_arg('aivesese_sql_v2_dismiss', 1), 'aivesese_sql_v2_nonce')) .
+            '" class="button">I\'ve Updated It</a>';
+        echo '</p>';
+        echo '</div>';
+    }
+
+    public function handle_sql_update_dismiss() {
+        if (isset($_GET['aivesese_sql_v2_dismiss']) && check_admin_referer('aivesese_sql_v2_nonce')) {
+            update_option('aivesese_sql_v2_dismissed', time());
+            wp_safe_redirect(remove_query_arg(['aivesese_sql_v2_dismiss', '_wpnonce']));
+            exit;
+        }
     }
 }
