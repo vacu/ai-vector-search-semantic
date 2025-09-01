@@ -45,7 +45,7 @@ create table if not exists products (
   attributes      jsonb,
 
   /* bookkeeping */
-  status          text default 'published',     -- published/draft/archived
+  status          text default 'publish',     -- published/draft/archived
   created_at      timestamptz default now(),
   updated_at      timestamptz default now()
 );
@@ -95,21 +95,10 @@ create index if not exists idx_products_store_status
   on products(store_id, status);
 
 create index if not exists idx_products_stock_status
-  on products(stock_status) where status = 'published';
+  on products(stock_status) where status = 'publish';
 
 create index if not exists idx_products_categories
   on products using gin(categories);
-
-/* ──────────────────────────────────────────────────────────────
-   4. SEARCH VIEW  (used by plugin's ?fts= queries)
-   ────────────────────────────────────────────────────────────── */
-create or replace view search_indexes as
-select
-  woocommerce_id,
-  store_id,
-  ts_index as index_data           -- PostgREST exposes the fts operator
-from products
-where status = 'published';
 
 /* ──────────────────────────────────────────────────────────────
    5. RPCs
@@ -119,7 +108,7 @@ where status = 'published';
 create or replace function semantic_search(
   store_id          uuid,
   query_embedding   vector,
-  match_threshold   float  default 0.35,
+  match_threshold   float  default 0.5,
   p_k               int    default 20
 )
 returns table (woocommerce_id bigint, distance float)
@@ -127,9 +116,9 @@ language sql stable as $$
   select p.woocommerce_id,
          (p.embedding <=> query_embedding) as distance
   from products p
-  where p.store_id = semantic_search.store_id
+  where p.store_id = store_id
     and (p.embedding <=> query_embedding) < match_threshold
-    and p.status = 'published'
+    and p.status = 'publish'
     and p.stock_status = 'in'
   order by distance
   limit p_k;
@@ -147,7 +136,7 @@ with ref as (
   select store_id, categories, embedding
   from products
   where woocommerce_id = prod_wc_id
-    and status = 'published'
+    and status = 'publish'
   limit 1
 ),
 candidates as (
@@ -156,7 +145,7 @@ candidates as (
   from   products p, ref r
   where  p.store_id      = r.store_id
     and  p.woocommerce_id <> prod_wc_id
-    and  p.status        = 'published'
+    and  p.status        = 'publish'
     and  p.stock_status  = 'in'
     and  p.regular_price is not null and p.regular_price > 0
     and  p.categories && r.categories               -- same cat only
@@ -188,7 +177,7 @@ language sql stable as $$
   where p.store_id = get_recommendations.store_id
     and p.woocommerce_id <> all(cart)
     and p.stock_status = 'in'
-    and p.status = 'published'
+    and p.status = 'publish'
   group by p.woocommerce_id, p.margin, p.sold_count
   order by p.margin desc, p.sold_count desc, random()
   limit p_k;
@@ -224,7 +213,7 @@ alter table products enable row level security;
 create policy products_public_select
   on products
   for select
-  using (status = 'published');
+  using (status = 'publish');
 
 /* Views inherit RLS from base table. */
 
@@ -251,7 +240,26 @@ select
     else 'no'
   end as has_embedding
 from products
-where status = 'published';
+where status = 'publish';
+
+CREATE OR REPLACE FUNCTION fts_search(
+    search_store_id uuid,
+    search_term text,
+    search_limit integer DEFAULT 20
+)
+RETURNS TABLE (woocommerce_id integer, rank real)
+LANGUAGE sql
+STABLE
+AS $$
+SELECT
+    p.woocommerce_id,
+    ts_rank_cd(p.ts_index, websearch_to_tsquery('simple', search_term)) as rank
+FROM products p
+WHERE p.store_id = search_store_id
+  AND p.ts_index @@ websearch_to_tsquery('simple', search_term)
+ORDER BY rank DESC
+LIMIT search_limit;
+$$;
 
 /* ──────────────────────────────────────────────────────────────
    8. DONE

@@ -11,6 +11,7 @@ $opts = [
     'aivesese_auto_sync',
     'aivesese_enable_pdp_similar',
     'aivesese_enable_cart_below',
+    'aivesese_enable_woodmart_integration',
 ];
 
 foreach ($opts as $opt) {
