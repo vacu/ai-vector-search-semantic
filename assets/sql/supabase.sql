@@ -261,6 +261,35 @@ ORDER BY rank DESC
 LIMIT search_limit;
 $$;
 
+CREATE OR REPLACE FUNCTION sku_search(
+    search_store_id uuid,
+    search_term text,
+    search_limit integer DEFAULT 20
+)
+RETURNS TABLE (woocommerce_id integer, rank real)
+LANGUAGE sql
+STABLE
+AS $$
+SELECT
+    p.woocommerce_id,
+    CASE
+        WHEN p.sku ILIKE search_term || '%' THEN 100.0::real
+        WHEN p.gtin ILIKE search_term || '%' THEN 95.0::real
+        WHEN p.sku ILIKE '%' || search_term || '%' THEN 50.0::real
+        WHEN p.gtin ILIKE '%' || search_term || '%' THEN 45.0::real
+        ELSE 10.0::real
+    END as rank
+FROM products p
+WHERE p.store_id = search_store_id
+  AND p.status = 'publish'
+  AND (
+      p.sku ILIKE '%' || search_term || '%'
+      OR p.gtin ILIKE '%' || search_term || '%'
+  )
+ORDER BY rank DESC
+LIMIT search_limit;
+$$;
+
 /* ──────────────────────────────────────────────────────────────
    8. DONE
    ────────────────────────────────────────────────────────────── */
