@@ -148,7 +148,7 @@ class AIVectorSearch_Admin_Interface {
         }
     }
 
-
+    public function render_connection_mode_field() {
         $value = get_option('aivesese_connection_mode', 'self_hosted');
         ?>
         <div class="connection-mode-selector">
@@ -618,46 +618,6 @@ class AIVectorSearch_Admin_Interface {
             'aivesese-sync',
             [$this, 'render_sync_page']
         );
-    }
-
-    public function render_settings_page() {
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('AI Supabase Settings', 'ai-vector-search-semantic') . '</h1>';
-        echo '<p>' . esc_html__('Configure the connection to your Supabase project and optionally enable semantic search using OpenAI.', 'ai-vector-search-semantic') . '</p>';
-
-        $this->render_help_section();
-
-        echo '<form method="post" action="options.php">';
-        settings_fields('aivesese_settings');
-        do_settings_sections('aivesese');
-        settings_errors();
-        submit_button();
-        echo '</form>';
-        echo '</div>';
-    }
-
-    public function render_status_page() {
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('AI Supabase Status', 'ai-vector-search-semantic') . '</h1>';
-
-        if (!$this->is_configured()) {
-            $this->render_configuration_error();
-            echo '</div>';
-            return;
-        }
-
-        $health = $this->supabase_client->get_store_health();
-
-        if (empty($health)) {
-            $this->render_connection_error();
-            echo '</div>';
-            return;
-        }
-
-        $this->render_health_overview($health[0]);
-        $this->render_configuration_summary();
-        $this->render_quick_actions();
-        echo '</div>';
     }
 
     public function render_sync_page() {
