@@ -115,11 +115,17 @@ class AIVectorSearch_Admin_Interface {
         );
 
         // Self-hosted fields
-        $self_hosted_fields = ['url', 'key', 'store', 'openai'];
-        foreach ($self_hosted_fields as $id) {
+        $self_hosted_fields = [
+            'url' => 'Supabase URL',
+            'key' => 'Supabase Service Key',
+            'store' => 'Store ID (UUID)',
+            'openai' => 'OpenAI API Key'
+        ];
+
+        foreach ($self_hosted_fields as $id => $label) {
             add_settings_field(
                 "aivesese_{$id}",
-                ucfirst(str_replace('_', ' ', $id)),
+                $label,
                 [$this, 'render_text_field'],
                 'aivesese',
                 'aivesese_section',
@@ -183,48 +189,6 @@ class AIVectorSearch_Admin_Interface {
             </label>
         </div>
 
-        <style>
-        .connection-mode-selector {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 20px 0;
-        }
-        .connection-option {
-            cursor: pointer;
-        }
-        .connection-option input[type="radio"] {
-            display: none;
-        }
-        .option-card {
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            transition: all 0.3s ease;
-            height: 100%;
-        }
-        .connection-option input[type="radio"]:checked + .option-card {
-            border-color: #0073aa;
-            background-color: #f0f8ff;
-        }
-        .option-card h4 {
-            margin-top: 0;
-            color: #0073aa;
-        }
-        .option-card ul {
-            list-style: none;
-            padding-left: 0;
-        }
-        .option-card li {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        .option-card small {
-            color: #666;
-            font-weight: bold;
-        }
-        </style>
-
         <script>
         document.addEventListener('DOMContentLoaded', function() {
             const radios = document.querySelectorAll('input[name="aivesese_connection_mode"]');
@@ -232,26 +196,32 @@ class AIVectorSearch_Admin_Interface {
                 const mode = document.querySelector('input[name="aivesese_connection_mode"]:checked').value;
 
                 // Toggle license key field
-                const licenseField = document.querySelector('[data-field="license_key"]');
-                if (licenseField) {
-                    licenseField.style.display = mode === 'api' ? 'table-row' : 'none';
+                const licenseRow = document.querySelector('#aivesese_license_key').closest('tr');
+                if (licenseRow) {
+                    licenseRow.style.display = mode === 'api' ? 'table-row' : 'none';
                 }
 
                 // Toggle self-hosted fields
-                const selfHostedFields = document.querySelectorAll('[data-conditional="self_hosted"]');
-                selfHostedFields.forEach(field => {
-                    field.style.display = mode === 'self_hosted' ? 'table-row' : 'none';
+                const selfHostedFields = ['aivesese_url', 'aivesese_key', 'aivesese_store', 'aivesese_openai'];
+                selfHostedFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field) {
+                        const row = field.closest('tr');
+                        if (row) {
+                            row.style.display = mode === 'self_hosted' ? 'table-row' : 'none';
+                        }
+                    }
                 });
 
                 // Show/hide help sections
-                const sqlSection = document.querySelector('.sql-help-section');
-                if (sqlSection) {
-                    sqlSection.style.display = mode === 'self_hosted' ? 'block' : 'none';
-                }
+                const helpSections = document.querySelectorAll('.ai-supabase-help');
+                helpSections.forEach(section => {
+                    section.style.display = mode === 'self_hosted' ? 'block' : 'none';
+                });
             };
 
             radios.forEach(radio => radio.addEventListener('change', toggleFields));
-            toggleFields(); // Initial toggle
+            setTimeout(toggleFields, 100); // Initial toggle with delay
         });
         </script>
         <?php
@@ -261,79 +231,37 @@ class AIVectorSearch_Admin_Interface {
         $value = get_option('aivesese_license_key');
         $is_activated = !empty($value) && get_option('aivesese_api_activated') === '1';
         ?>
-        <tr data-field="license_key">
-            <th scope="row">License Key</th>
-            <td>
-                <div class="license-key-section">
-                    <?php if ($is_activated): ?>
-                        <div class="license-status activated">
-                            <span class="dashicons dashicons-yes-alt"></span>
-                            <strong>License Active</strong>
-                            <p>Your API service is connected and ready!</p>
-                            <button type="button" class="button" onclick="revokeLicense()">Change License</button>
-                        </div>
-                    <?php else: ?>
-                        <input type="text"
-                               id="aivesese_license_key"
-                               name="aivesese_license_key"
-                               value="<?php echo esc_attr($value); ?>"
-                               class="regular-text"
-                               placeholder="Enter your license key from zzzsolutions.ro">
-
-                        <button type="button"
-                                id="activate-license"
-                                class="button button-secondary"
-                                onclick="activateLicense()">
-                            Activate License
-                        </button>
-
-                        <div id="license-status" style="margin-top: 10px;"></div>
-
-                        <p class="description">
-                            Don't have a license?
-                            <a href="https://zzzsolutions.ro/ai-search-service" target="_blank">Get one here</a>
-                        </p>
-                    <?php endif; ?>
+        <div class="license-key-section">
+            <?php if ($is_activated): ?>
+                <div class="license-status activated">
+                    <span class="dashicons dashicons-yes-alt"></span>
+                    <strong>License Active</strong>
+                    <p>Your API service is connected and ready!</p>
+                    <button type="button" class="button" onclick="revokeLicense()">Change License</button>
                 </div>
+            <?php else: ?>
+                <input type="text"
+                       id="aivesese_license_key"
+                       name="aivesese_license_key"
+                       value="<?php echo esc_attr($value); ?>"
+                       class="regular-text"
+                       placeholder="Enter your license key from zzzsolutions.ro">
 
-                <style>
-                .license-key-section {
-                    max-width: 500px;
-                }
-                .license-status {
-                    padding: 15px;
-                    border-radius: 4px;
-                    border-left: 4px solid;
-                }
-                .license-status.activated {
-                    background: #f0f9ff;
-                    border-left-color: #10b981;
-                    color: #065f46;
-                }
-                .license-status .dashicons {
-                    color: #10b981;
-                    margin-right: 5px;
-                }
-                .license-loading {
-                    color: #f59e0b;
-                }
-                .license-error {
-                    color: #dc2626;
-                    background: #fef2f2;
-                    border-left-color: #dc2626;
-                    padding: 10px;
-                    margin-top: 10px;
-                }
-                .license-success {
-                    color: #065f46;
-                    background: #f0f9ff;
-                    border-left-color: #10b981;
-                    padding: 10px;
-                    margin-top: 10px;
-                }
-                </style>
-            </td>
-        </tr>
+                <button type="button"
+                        id="activate-license"
+                        class="button button-secondary"
+                        onclick="activateLicense()">
+                    Activate License
+                </button>
+
+                <div id="license-status" style="margin-top: 10px;"></div>
+
+                <p class="description">
+                    Don't have a license?
+                    <a href="https://zzzsolutions.ro/ai-search-service" target="_blank">Get one here</a>
+                </p>
+            <?php endif; ?>
+        </div>
 
         <script>
         function activateLicense() {
@@ -379,9 +307,7 @@ class AIVectorSearch_Admin_Interface {
 
         function revokeLicense() {
             if (confirm('Are you sure you want to deactivate your license? This will switch back to self-hosted mode.')) {
-                // Clear license data
                 document.getElementById('aivesese_license_key').value = '';
-                // Submit form to save changes
                 document.querySelector('form').submit();
             }
         }
@@ -391,18 +317,18 @@ class AIVectorSearch_Admin_Interface {
 
     public function render_text_field($args) {
         $field_id = $args['field_id'];
-        $conditional = $args['conditional'] ?? null;
         $value = get_option("aivesese_{$field_id}");
 
-        $data_attr = $conditional ? 'data-conditional="' . esc_attr($conditional) . '"' : '';
-
         printf(
-            '<tr %s><th scope="row">%s</th><td><input type="text" class="regular-text" name="aivesese_%s" value="%s" /></td></tr>',
-            $data_attr,
-            ucfirst(str_replace('_', ' ', $field_id)),
+            '<input type="text" id="aivesese_%s" name="aivesese_%s" value="%s" class="regular-text" />',
+            esc_attr($field_id),
             esc_attr($field_id),
             esc_attr($value)
         );
+
+        if ($field_id === 'openai') {
+            echo '<p class="description">Only required if semantic search is enabled</p>';
+        }
     }
 
     public function render_checkbox_field($args) {
@@ -457,7 +383,7 @@ class AIVectorSearch_Admin_Interface {
     }
 
     /**
-     * Enhanced settings page with conditional fields
+     * Enhanced settings page with custom field rendering
      */
     public function render_settings_page() {
         $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
@@ -470,18 +396,193 @@ class AIVectorSearch_Admin_Interface {
             echo '<p>You are using our managed API service. No additional setup required!</p>';
         } else {
             echo '<p>Configure your own Supabase project and optionally enable semantic search using OpenAI.</p>';
+        }
+
+        // Show help section only for self-hosted mode
+        if ($connection_mode === 'self_hosted') {
             $this->render_help_section();
         }
 
         echo '<form method="post" action="options.php">';
         settings_fields('aivesese_settings');
-        echo '<table class="form-table">';
         do_settings_sections('aivesese');
-        echo '</table>';
-        settings_errors();
         submit_button();
         echo '</form>';
+
         echo '</div>';
+
+        // Add styles
+        $this->add_admin_styles();
+    }
+
+    private function add_admin_styles() {
+        ?>
+        <style>
+        .connection-mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .connection-option {
+            cursor: pointer;
+        }
+        .connection-option input[type="radio"] {
+            display: none;
+        }
+        .option-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .connection-option input[type="radio"]:checked + .option-card {
+            border-color: #0073aa;
+            background-color: #f0f8ff;
+        }
+        .option-card h4 {
+            margin-top: 0;
+            color: #0073aa;
+        }
+        .option-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .option-card li {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .option-card small {
+            color: #666;
+            font-weight: bold;
+        }
+
+        /* License field styles */
+        .license-key-section {
+            max-width: 500px;
+        }
+        .license-status {
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .license-status.activated {
+            background: #f0f9ff;
+            border-left-color: #10b981;
+            color: #065f46;
+        }
+        .license-status .dashicons {
+            color: #10b981;
+            margin-right: 5px;
+        }
+        .license-loading {
+            color: #f59e0b;
+        }
+        .license-error {
+            color: #dc2626;
+            background: #fef2f2;
+            border-left-color: #dc2626;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .license-success {
+            color: #065f46;
+            background: #f0f9ff;
+            border-left-color: #10b981;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        </style>
+        <?php
+    }
+
+    /**
+     * Add JavaScript for showing/hiding conditional fields
+     */
+    private function add_conditional_field_script() {
+        ?>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const radios = document.querySelectorAll('input[name="aivesese_connection_mode"]');
+
+            function toggleFields() {
+                const mode = document.querySelector('input[name="aivesese_connection_mode"]:checked');
+                if (!mode) return;
+
+                const selectedMode = mode.value;
+
+                // Show/hide API fields
+                const apiFields = document.querySelectorAll('.api-field');
+                apiFields.forEach(field => {
+                    field.style.display = selectedMode === 'api' ? 'table-row' : 'none';
+                });
+
+                // Show/hide self-hosted fields
+                const selfHostedFields = document.querySelectorAll('.self-hosted-field');
+                selfHostedFields.forEach(field => {
+                    field.style.display = selectedMode === 'self_hosted' ? 'table-row' : 'none';
+                });
+
+                // Show/hide help sections
+                const helpSections = document.querySelectorAll('.ai-supabase-help');
+                helpSections.forEach(section => {
+                    section.style.display = selectedMode === 'self_hosted' ? 'block' : 'none';
+                });
+            }
+
+            // Initial toggle
+            setTimeout(toggleFields, 100); // Small delay to ensure DOM is ready
+
+            // Toggle on change
+            radios.forEach(radio => {
+                radio.addEventListener('change', toggleFields);
+            });
+        });
+        </script>
+
+        <style>
+        .connection-mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .connection-option {
+            cursor: pointer;
+        }
+        .connection-option input[type="radio"] {
+            display: none;
+        }
+        .option-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .connection-option input[type="radio"]:checked + .option-card {
+            border-color: #0073aa;
+            background-color: #f0f8ff;
+        }
+        .option-card h4 {
+            margin-top: 0;
+            color: #0073aa;
+        }
+        .option-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .option-card li {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .option-card small {
+            color: #666;
+            font-weight: bold;
+        }
+        </style>
+        <?php
     }
 
     /**
