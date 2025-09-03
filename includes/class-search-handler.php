@@ -1,12 +1,11 @@
 <?php
 /**
- * Handles search functionality and query interception
+ * Search Handler with Connection Manager support
  */
 class AIVectorSearch_Search_Handler {
 
     private static $instance = null;
-    private $supabase_client;
-    private $openai_client;
+    private $connection_manager;
 
     public static function instance() {
         if (self::$instance === null) {
@@ -16,8 +15,7 @@ class AIVectorSearch_Search_Handler {
     }
 
     private function __construct() {
-        $this->supabase_client = AIVectorSearch_Supabase_Client::instance();
-        $this->openai_client = AIVectorSearch_OpenAI_Client::instance();
+        $this->connection_manager = AIVectorSearch_Connection_Manager::instance();
         $this->init_hooks();
     }
 
@@ -104,27 +102,43 @@ class AIVectorSearch_Search_Handler {
         return $ids;
     }
 
-    // Add this new method
+    /**
+     * Search using SKU - uses connection manager
+     */
     private function search_sku(string $term, int $limit): array {
-        return $this->supabase_client->search_products_sku($term, $limit);
+        return $this->connection_manager->search_products_sku($term, $limit);
     }
 
+    /**
+     * Search using semantic search - uses connection manager
+     */
     private function search_semantic(string $term, int $limit): array {
-        $embedding = $this->openai_client->embed_single($term);
-        if (!$embedding) {
-            return [];
+        if ($this->connection_manager->is_api_mode()) {
+            // API mode handles embedding generation internally
+            return $this->connection_manager->search_products_semantic($term, [], $limit);
+        } else {
+            // Self-hosted mode needs to generate embedding first
+            $embedding = $this->connection_manager->generate_embedding($term);
+            if (!$embedding) {
+                return [];
+            }
+            return $this->connection_manager->search_products_semantic($term, $embedding, $limit);
         }
-
-        return $this->supabase_client->search_products_semantic($term, $embedding, $limit);
     }
 
+    /**
+     * Search using full-text search - uses connection manager
+     */
     private function search_fulltext(string $term, int $limit): array {
-        return $this->supabase_client->search_products_fts($term, $limit);
+        return $this->connection_manager->search_products_fts($term, $limit);
     }
 
+    /**
+     * Determine if semantic search should be used
+     */
     private function should_use_semantic_search(string $term): bool {
         return get_option('aivesese_semantic_toggle') === '1' &&
                strlen($term) >= 3 &&
-               $this->openai_client->is_configured();
+               $this->connection_manager->is_semantic_search_available();
     }
 }

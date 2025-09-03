@@ -1,6 +1,6 @@
 === AI Vector Search (Semantic) ===
 Contributors: calingrim
-Tags: woocommerce, search, ai, vector, semantic, supabase, embeddings, recommendations, openai
+Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
@@ -8,7 +8,7 @@ Stable Tag: 0.15.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-🚀 Transform your WooCommerce search with AI-powered semantic search using Supabase and OpenAI. Get smarter product recommendations and blazing-fast search results.
+🚀 Transform your WooCommerce search with AI-powered semantic search. Get smarter product recommendations and blazing-fast search results.
 
 == Description ==
 
@@ -181,7 +181,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Changelog ==
 
-= 0.15.3 (Latest) =
+= 0.16.0 (Latest) =
+* API Support
+
+= 0.15.3 =
 * **Update:** Improved readme file and documentation
 
 = 0.15.2 =
@@ -237,6 +240,9 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 * **Launch:** Initial public release with full feature set
 
 == Upgrade Notice ==
+
+= 0.16.0 (Latest) =
+* API Support
 
 = 0.15.3 (Latest) =
 * **Update:** Improved readme file and documentation

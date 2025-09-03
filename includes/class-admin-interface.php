@@ -6,6 +6,7 @@ class AIVectorSearch_Admin_Interface {
 
     private static $instance = null;
     private $supabase_client;
+    private $api_client;
     private $product_sync;
 
     public static function instance() {
@@ -17,6 +18,7 @@ class AIVectorSearch_Admin_Interface {
 
     private function __construct() {
         $this->supabase_client = AIVectorSearch_Supabase_Client::instance();
+        $this->api_client = AIVectorSearch_API_Client::instance();
         $this->product_sync = AIVectorSearch_Product_Sync::instance();
         $this->init_hooks();
     }
@@ -29,14 +31,25 @@ class AIVectorSearch_Admin_Interface {
         add_action('admin_notices', [$this, 'show_sql_update_notice']);
         add_action('admin_init', [$this, 'handle_sql_update_dismiss']);
         add_action('wp_ajax_aivesese_toggle_help', [$this, 'handle_help_toggle']);
+        add_action('wp_ajax_aivesese_activate_license', [$this, 'handle_license_activation']);
+        add_action('wp_ajax_aivesese_test_connection', [$this, 'handle_test_connection']);
     }
 
     public function register_settings() {
         $settings = [
+            // Connection mode
+            'connection_mode' => 'Connection Type',
+
+            // API mode settings
+            'license_key' => 'License Key (for API mode)',
+
+            // Self-hosted mode settings (existing)
             'url' => 'Supabase URL (https://xyz.supabase.co)',
             'key' => 'Supabase service / anon key',
             'store' => 'Store ID (UUID)',
             'openai' => 'OpenAI API key (only if semantic search is enabled)',
+
+            // Feature toggles
             'semantic_toggle' => 'Enable semantic (vector) search',
             'auto_sync' => 'Auto-sync products on save',
             'enable_pdp_similar' => 'PDP "Similar products"',
@@ -48,12 +61,14 @@ class AIVectorSearch_Admin_Interface {
             $this->register_setting($id);
         }
 
-        add_settings_section('aivesese_section', 'Supabase connection', '__return_false', 'aivesese');
+        add_settings_section('aivesese_section', 'AI Search Configuration', '__return_false', 'aivesese');
         $this->add_settings_fields();
     }
 
     private function register_setting(string $id) {
         $sanitizers = [
+            'connection_mode' => 'sanitize_text_field',
+            'license_key' => 'aivesese_passthru',
             'url' => 'esc_url_raw',
             'key' => 'aivesese_passthru',
             'store' => 'sanitize_text_field',
@@ -66,35 +81,60 @@ class AIVectorSearch_Admin_Interface {
             'default' => '',
         ];
 
+        // Special handling for connection mode
+        if ($id === 'connection_mode') {
+            $config['default'] = 'self_hosted';
+        }
+
         // Special handling for checkboxes
         if (in_array($id, ['semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration'])) {
             $config['sanitize_callback'] = function($v) { return $v === '1' ? '1' : '0'; };
-            $config['default'] = $id === 'enable_woodmart_integration' ? '0' : '1'; // Default OFF for Woodmart
+            $config['default'] = $id === 'enable_woodmart_integration' ? '0' : '1';
         }
 
         register_setting('aivesese_settings', "aivesese_{$id}", $config);
     }
 
     private function add_settings_fields() {
-        $text_fields = ['url', 'key', 'store', 'openai'];
-        $checkbox_fields = [
-            'semantic_toggle' => 'Enable semantic (vector) search - Better relevance (needs OpenAI key)',
-            'auto_sync' => 'Auto-sync products - Automatically sync products when saved/updated',
-            'enable_pdp_similar' => 'PDP "Similar products" - Show similar products on product pages',
-            'enable_cart_below' => 'Below-cart recommendations - Show recommendations under cart',
-            'enable_woodmart_integration' => 'Woodmart live search integration - Enable AI search for Woodmart AJAX search',
-        ];
+        // Connection mode selector
+        add_settings_field(
+            'aivesese_connection_mode',
+            'Connection Type',
+            [$this, 'render_connection_mode_field'],
+            'aivesese',
+            'aivesese_section'
+        );
 
-        foreach ($text_fields as $id) {
+        // API mode fields
+        add_settings_field(
+            'aivesese_license_key',
+            'License Key',
+            [$this, 'render_license_key_field'],
+            'aivesese',
+            'aivesese_section'
+        );
+
+        // Self-hosted fields
+        $self_hosted_fields = ['url', 'key', 'store', 'openai'];
+        foreach ($self_hosted_fields as $id) {
             add_settings_field(
                 "aivesese_{$id}",
                 ucfirst(str_replace('_', ' ', $id)),
                 [$this, 'render_text_field'],
                 'aivesese',
                 'aivesese_section',
-                ['field_id' => $id]
+                ['field_id' => $id, 'conditional' => 'self_hosted']
             );
         }
+
+        // Feature toggles
+        $checkbox_fields = [
+            'semantic_toggle' => 'Enable semantic (vector) search - Better relevance',
+            'auto_sync' => 'Auto-sync products - Automatically sync products when saved/updated',
+            'enable_pdp_similar' => 'PDP "Similar products" - Show similar products on product pages',
+            'enable_cart_below' => 'Below-cart recommendations - Show recommendations under cart',
+            'enable_woodmart_integration' => 'Woodmart live search integration - Enable AI search for Woodmart AJAX search',
+        ];
 
         foreach ($checkbox_fields as $id => $label) {
             add_settings_field(
@@ -108,12 +148,258 @@ class AIVectorSearch_Admin_Interface {
         }
     }
 
+
+        $value = get_option('aivesese_connection_mode', 'self_hosted');
+        ?>
+        <div class="connection-mode-selector">
+            <label class="connection-option">
+                <input type="radio" name="aivesese_connection_mode" value="api" <?php checked($value, 'api'); ?>>
+                <div class="option-card">
+                    <h4>🚀 Managed API Service</h4>
+                    <p>Use our hosted service with your license key. No setup required!</p>
+                    <ul>
+                        <li>✅ No database setup needed</li>
+                        <li>✅ Automatic updates and maintenance</li>
+                        <li>✅ Professional support included</li>
+                        <li>✅ Guaranteed uptime and performance</li>
+                    </ul>
+                    <small><strong>Starts at $29/month</strong></small>
+                </div>
+            </label>
+
+            <label class="connection-option">
+                <input type="radio" name="aivesese_connection_mode" value="self_hosted" <?php checked($value, 'self_hosted'); ?>>
+                <div class="option-card">
+                    <h4>⚙️ Self-Hosted (Bring Your Own Keys)</h4>
+                    <p>Use your own Supabase and OpenAI accounts. Full control!</p>
+                    <ul>
+                        <li>🔧 Requires Supabase project setup</li>
+                        <li>🔧 Manual SQL installation needed</li>
+                        <li>🔧 You manage infrastructure</li>
+                        <li>💰 Pay only for API usage</li>
+                    </ul>
+                    <small><strong>Free plugin + your API costs</strong></small>
+                </div>
+            </label>
+        </div>
+
+        <style>
+        .connection-mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .connection-option {
+            cursor: pointer;
+        }
+        .connection-option input[type="radio"] {
+            display: none;
+        }
+        .option-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .connection-option input[type="radio"]:checked + .option-card {
+            border-color: #0073aa;
+            background-color: #f0f8ff;
+        }
+        .option-card h4 {
+            margin-top: 0;
+            color: #0073aa;
+        }
+        .option-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .option-card li {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .option-card small {
+            color: #666;
+            font-weight: bold;
+        }
+        </style>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const radios = document.querySelectorAll('input[name="aivesese_connection_mode"]');
+            const toggleFields = function() {
+                const mode = document.querySelector('input[name="aivesese_connection_mode"]:checked').value;
+
+                // Toggle license key field
+                const licenseField = document.querySelector('[data-field="license_key"]');
+                if (licenseField) {
+                    licenseField.style.display = mode === 'api' ? 'table-row' : 'none';
+                }
+
+                // Toggle self-hosted fields
+                const selfHostedFields = document.querySelectorAll('[data-conditional="self_hosted"]');
+                selfHostedFields.forEach(field => {
+                    field.style.display = mode === 'self_hosted' ? 'table-row' : 'none';
+                });
+
+                // Show/hide help sections
+                const sqlSection = document.querySelector('.sql-help-section');
+                if (sqlSection) {
+                    sqlSection.style.display = mode === 'self_hosted' ? 'block' : 'none';
+                }
+            };
+
+            radios.forEach(radio => radio.addEventListener('change', toggleFields));
+            toggleFields(); // Initial toggle
+        });
+        </script>
+        <?php
+    }
+
+    public function render_license_key_field() {
+        $value = get_option('aivesese_license_key');
+        $is_activated = !empty($value) && get_option('aivesese_api_activated') === '1';
+        ?>
+        <tr data-field="license_key">
+            <th scope="row">License Key</th>
+            <td>
+                <div class="license-key-section">
+                    <?php if ($is_activated): ?>
+                        <div class="license-status activated">
+                            <span class="dashicons dashicons-yes-alt"></span>
+                            <strong>License Active</strong>
+                            <p>Your API service is connected and ready!</p>
+                            <button type="button" class="button" onclick="revokeLicense()">Change License</button>
+                        </div>
+                    <?php else: ?>
+                        <input type="text"
+                               id="aivesese_license_key"
+                               name="aivesese_license_key"
+                               value="<?php echo esc_attr($value); ?>"
+                               class="regular-text"
+                               placeholder="Enter your license key from zzzsolutions.ro">
+
+                        <button type="button"
+                                id="activate-license"
+                                class="button button-secondary"
+                                onclick="activateLicense()">
+                            Activate License
+                        </button>
+
+                        <div id="license-status" style="margin-top: 10px;"></div>
+
+                        <p class="description">
+                            Don't have a license?
+                            <a href="https://zzzsolutions.ro/ai-search-service" target="_blank">Get one here</a>
+                        </p>
+                    <?php endif; ?>
+                </div>
+
+                <style>
+                .license-key-section {
+                    max-width: 500px;
+                }
+                .license-status {
+                    padding: 15px;
+                    border-radius: 4px;
+                    border-left: 4px solid;
+                }
+                .license-status.activated {
+                    background: #f0f9ff;
+                    border-left-color: #10b981;
+                    color: #065f46;
+                }
+                .license-status .dashicons {
+                    color: #10b981;
+                    margin-right: 5px;
+                }
+                .license-loading {
+                    color: #f59e0b;
+                }
+                .license-error {
+                    color: #dc2626;
+                    background: #fef2f2;
+                    border-left-color: #dc2626;
+                    padding: 10px;
+                    margin-top: 10px;
+                }
+                .license-success {
+                    color: #065f46;
+                    background: #f0f9ff;
+                    border-left-color: #10b981;
+                    padding: 10px;
+                    margin-top: 10px;
+                }
+                </style>
+            </td>
+        </tr>
+
+        <script>
+        function activateLicense() {
+            const key = document.getElementById('aivesese_license_key').value;
+            const button = document.getElementById('activate-license');
+            const status = document.getElementById('license-status');
+
+            if (!key) {
+                status.innerHTML = '<div class="license-error">Please enter a license key</div>';
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Activating...';
+            status.innerHTML = '<div class="license-loading">🔄 Activating license...</div>';
+
+            fetch(ajaxurl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    action: 'aivesese_activate_license',
+                    license_key: key,
+                    nonce: '<?php echo wp_create_nonce('aivesese_license_nonce'); ?>'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    status.innerHTML = '<div class="license-success">✅ License activated successfully! Refreshing page...</div>';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    status.innerHTML = '<div class="license-error">❌ ' + data.data.message + '</div>';
+                    button.disabled = false;
+                    button.textContent = 'Activate License';
+                }
+            })
+            .catch(error => {
+                status.innerHTML = '<div class="license-error">❌ Connection error. Please try again.</div>';
+                button.disabled = false;
+                button.textContent = 'Activate License';
+            });
+        }
+
+        function revokeLicense() {
+            if (confirm('Are you sure you want to deactivate your license? This will switch back to self-hosted mode.')) {
+                // Clear license data
+                document.getElementById('aivesese_license_key').value = '';
+                // Submit form to save changes
+                document.querySelector('form').submit();
+            }
+        }
+        </script>
+        <?php
+    }
+
     public function render_text_field($args) {
         $field_id = $args['field_id'];
+        $conditional = $args['conditional'] ?? null;
         $value = get_option("aivesese_{$field_id}");
 
+        $data_attr = $conditional ? 'data-conditional="' . esc_attr($conditional) . '"' : '';
+
         printf(
-            '<input type="text" class="regular-text" name="aivesese_%s" value="%s" />',
+            '<tr %s><th scope="row">%s</th><td><input type="text" class="regular-text" name="aivesese_%s" value="%s" /></td></tr>',
+            $data_attr,
+            ucfirst(str_replace('_', ' ', $field_id)),
             esc_attr($field_id),
             esc_attr($value)
         );
@@ -130,6 +416,180 @@ class AIVectorSearch_Admin_Interface {
             checked($value, '1', false),
             esc_html($label)
         );
+    }
+
+    /**
+     * Handle license activation AJAX
+     */
+    public function handle_license_activation() {
+        check_ajax_referer('aivesese_license_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+            return;
+        }
+
+        $license_key = sanitize_text_field($_POST['license_key']);
+
+        if (empty($license_key)) {
+            wp_send_json_error(['message' => 'License key is required']);
+            return;
+        }
+
+        // Test the license key with the API
+        $result = $this->api_client->activate_license($license_key);
+
+        if ($result['success']) {
+            // Save license and switch to API mode
+            update_option('aivesese_license_key', $license_key);
+            update_option('aivesese_connection_mode', 'api');
+            update_option('aivesese_api_activated', '1');
+            update_option('aivesese_store', $result['store_id']);
+
+            wp_send_json_success([
+                'message' => 'License activated successfully!',
+                'store_id' => $result['store_id'],
+                'plan' => $result['plan']
+            ]);
+        } else {
+            wp_send_json_error(['message' => $result['message']]);
+        }
+    }
+
+    /**
+     * Enhanced settings page with conditional fields
+     */
+    public function render_settings_page() {
+        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+
+        echo '<div class="wrap">';
+        echo '<h1>' . esc_html__('AI Vector Search Settings', 'ai-vector-search-semantic') . '</h1>';
+
+        // Show different descriptions based on mode
+        if ($connection_mode === 'api') {
+            echo '<p>You are using our managed API service. No additional setup required!</p>';
+        } else {
+            echo '<p>Configure your own Supabase project and optionally enable semantic search using OpenAI.</p>';
+            $this->render_help_section();
+        }
+
+        echo '<form method="post" action="options.php">';
+        settings_fields('aivesese_settings');
+        echo '<table class="form-table">';
+        do_settings_sections('aivesese');
+        echo '</table>';
+        settings_errors();
+        submit_button();
+        echo '</form>';
+        echo '</div>';
+    }
+
+    /**
+     * Enhanced status page with API/self-hosted detection
+     */
+    public function render_status_page() {
+        echo '<div class="wrap">';
+        echo '<h1>' . esc_html__('AI Vector Search Status', 'ai-vector-search-semantic') . '</h1>';
+
+        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+
+        if ($connection_mode === 'api') {
+            $this->render_api_status();
+        } else {
+            $this->render_self_hosted_status();
+        }
+
+        echo '</div>';
+    }
+
+    private function render_api_status() {
+        $license_key = get_option('aivesese_license_key');
+
+        if (empty($license_key)) {
+            echo '<div class="notice notice-error"><p>No license key configured. Please go to Settings to activate your license.</p></div>';
+            return;
+        }
+
+        // Get status from API
+        $status = $this->api_client->get_status();
+
+        if (!$status) {
+            echo '<div class="notice notice-error"><p>Unable to connect to API service. Please check your license key.</p></div>';
+            return;
+        }
+
+        echo '<div class="notice notice-success"><p>✅ Connected to ZZZ Solutions API Service</p></div>';
+
+        // Show subscription info
+        echo '<h2>Subscription Status</h2>';
+        echo '<table class="widefat striped">';
+        echo '<tbody>';
+        echo '<tr><td><strong>Plan</strong></td><td>' . esc_html(ucfirst($status['plan'])) . '</td></tr>';
+        echo '<tr><td><strong>Status</strong></td><td><span class="status-' . esc_attr($status['status']) . '">' . esc_html(ucfirst($status['status'])) . '</span></td></tr>';
+        echo '<tr><td><strong>Products Synced</strong></td><td>' . number_format($status['products_count']) . '</td></tr>';
+        echo '<tr><td><strong>Searches This Month</strong></td><td>' . number_format($status['usage']['searches_this_month']) . '</td></tr>';
+        echo '<tr><td><strong>API Calls Today</strong></td><td>' . number_format($status['usage']['api_calls_today']) . '</td></tr>';
+
+        if (!empty($status['expires_at'])) {
+            echo '<tr><td><strong>Next Payment</strong></td><td>' . esc_html(date('M j, Y', strtotime($status['expires_at']))) . '</td></tr>';
+        }
+
+        echo '</tbody></table>';
+
+        // Show usage limits
+        if (!empty($status['limits'])) {
+            echo '<h2>Usage Limits</h2>';
+            echo '<div class="usage-bars">';
+
+            $this->render_usage_bar(
+                'Products',
+                $status['products_count'],
+                $status['limits']['products_limit'],
+                'products'
+            );
+
+            $this->render_usage_bar(
+                'Monthly Searches',
+                $status['usage']['searches_this_month'],
+                $status['limits']['searches_limit'],
+                'searches'
+            );
+
+            echo '</div>';
+        }
+    }
+
+    private function render_usage_bar($label, $current, $limit, $type) {
+        $percentage = $limit > 0 ? min(($current / $limit) * 100, 100) : 0;
+        $color = $percentage > 90 ? '#dc2626' : ($percentage > 70 ? '#f59e0b' : '#10b981');
+
+        echo '<div class="usage-bar-container">';
+        echo '<div class="usage-bar-header">';
+        echo '<span>' . esc_html($label) . '</span>';
+        echo '<span>' . number_format($current) . ($limit > 0 ? ' / ' . number_format($limit) : '') . '</span>';
+        echo '</div>';
+        echo '<div class="usage-bar">';
+        echo '<div class="usage-bar-fill" style="width: ' . $percentage . '%; background-color: ' . $color . '"></div>';
+        echo '</div>';
+        echo '</div>';
+    }
+
+    private function render_self_hosted_status() {
+        if (!$this->is_configured()) {
+            $this->render_configuration_error();
+            return;
+        }
+
+        $health = $this->supabase_client->get_store_health();
+
+        if (empty($health)) {
+            $this->render_connection_error();
+            return;
+        }
+
+        $this->render_health_overview($health[0]);
+        $this->render_configuration_summary();
+        $this->render_quick_actions();
     }
 
     public function add_admin_pages() {
