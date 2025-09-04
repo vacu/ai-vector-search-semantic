@@ -38,13 +38,14 @@ spl_autoload_register(function ($class) {
 // Load plugin classes
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-encryption-manager.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-supabase-client.php';
-require_once AIVESESE_PLUGIN_PATH . 'includes/class-api-client.php'; // New
-require_once AIVESESE_PLUGIN_PATH . 'includes/class-connection-manager.php'; // New
+require_once AIVESESE_PLUGIN_PATH . 'includes/class-api-client.php';
+require_once AIVESESE_PLUGIN_PATH . 'includes/class-connection-manager.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-openai-client.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-product-sync.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-search-handler.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-recommendations.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-admin-interface.php';
+require_once AIVESESE_PLUGIN_PATH . 'includes/class-analytics.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-plugin.php';
 
 // Initialize the plugin

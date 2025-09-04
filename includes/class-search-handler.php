@@ -6,6 +6,7 @@ class AIVectorSearch_Search_Handler {
 
     private static $instance = null;
     private $connection_manager;
+    private $analytics;
 
     public static function instance() {
         if (self::$instance === null) {
@@ -16,6 +17,7 @@ class AIVectorSearch_Search_Handler {
 
     private function __construct() {
         $this->connection_manager = AIVectorSearch_Connection_Manager::instance();
+        $this->analytics = AIVectorSearch_Analytics::instance();
         $this->init_hooks();
     }
 
@@ -59,6 +61,8 @@ class AIVectorSearch_Search_Handler {
         }
 
         $product_ids = $this->search_products($search_term);
+        $this->track_search_analytics($search_term, $product_ids);
+
         if (empty($product_ids)) {
             return;
         }
@@ -100,6 +104,30 @@ class AIVectorSearch_Search_Handler {
         }
 
         return $ids;
+    }
+
+    /**
+     * Track search analytics
+     */
+    private function track_search_analytics(string $term, array $product_ids) {
+        // Determine search type used
+        $search_type = 'fts'; // default
+
+        if ($this->should_use_semantic_search($term)) {
+            $search_type = 'semantic';
+        }
+
+        // If no results from main search, check if SKU search would work
+        if (empty($product_ids)) {
+            $sku_results = $this->search_sku($term, 5);
+            if (!empty($sku_results)) {
+                $search_type = 'sku';
+                $product_ids = $sku_results; // Update results for tracking
+            }
+        }
+
+        // Track the search
+        $this->analytics->track_search($term, $search_type, $product_ids);
     }
 
     /**
