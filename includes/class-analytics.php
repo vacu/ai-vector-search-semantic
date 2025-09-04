@@ -416,7 +416,7 @@ class AIVectorSearch_Analytics {
             </div>
 
             <!-- Upgrade Promotion -->
-            <div class="aivs-upgrade-banner">
+            <!-- <div class="aivs-upgrade-banner">
                 <h3>🚀 Want More Insights?</h3>
                 <p>Upgrade to our API service for unlimited analytics history, customer journey tracking, and advanced reports:</p>
                 <ul>
@@ -427,8 +427,8 @@ class AIVectorSearch_Analytics {
                     <li>✅ Seasonal trend analysis</li>
                 </ul>
                 <a href="https://zzzsolutions.ro/ai-search-service" target="_blank" class="button button-primary">View Pricing</a>
-                <a href="<?php echo admin_url('options-general.php?page=aivesese'); ?>" class="button">Configure API</a>
-            </div>
+                <a href="<?php //echo admin_url('options-general.php?page=aivesese'); ?>" class="button">Configure API</a>
+            </div> -->
         </div>
 
         <style>
