@@ -235,15 +235,17 @@ class AIVectorSearch_Plugin {
         echo '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">';
 
         // API Option
-        echo '<div style="padding: 15px; border: 2px solid #0073aa; border-radius: 8px;">';
-        echo '<h4 style="margin-top: 0;">🚀 Managed API Service (Recommended)</h4>';
-        echo '<ul style="margin: 10px 0;">';
-        echo '<li>✅ No setup required</li>';
-        echo '<li>✅ Professional support</li>';
-        echo '<li>✅ Automatic maintenance</li>';
-        echo '<li>✅ Advanced analytics included</li>';
-        echo '</ul>';
-        echo '<p><a href="https://zzzsolutions.ro/ai-search-service" target="_blank" class="button button-primary">Get License Key</a></p>';
+        echo '<div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0;">';
+        // echo '<div style="padding: 15px; border: 2px solid #0073aa; border-radius: 8px;">';
+        // echo '<h4 style="margin-top: 0;">🚀 Managed API Service (Recommended)</h4>';
+        echo '<h4 style="margin-top: 0;">🚀 Managed API Service (Coming Soon)</h4>';
+        // echo '<ul style="margin: 10px 0;">';
+        // echo '<li>✅ No setup required</li>';
+        // echo '<li>✅ Professional support</li>';
+        // echo '<li>✅ Automatic maintenance</li>';
+        // echo '<li>✅ Advanced analytics included</li>';
+        // echo '</ul>';
+        // echo '<p><a href="https://zzzsolutions.ro/ai-search-service" target="_blank" class="button button-primary">Get License Key</a></p>';
         echo '</div>';
 
         // Self-hosted Option

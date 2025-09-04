@@ -160,7 +160,12 @@ class AIVectorSearch_Admin_Interface {
         <div class="connection-mode-selector">
             <label class="connection-option">
                 <input type="radio" name="aivesese_connection_mode" value="api" <?php checked($value, 'api'); ?>>
-                <div class="option-card">
+                <div class="api-service-preview">
+                    <h5>🚀 Managed API Service (Coming Soon!)</h5>
+                    <p><em>We're working on a hosted service that will eliminate setup complexity.
+                    <!-- <a href="https://zzzsolutions.ro" target="_blank">Join our waitlist</a> to be notified when it's ready!</em></p> -->
+                </div>
+                <!-- <div class="option-card">
                     <h4>🚀 Managed API Service</h4>
                     <p>Use our hosted service with your license key. No setup required!</p>
                     <ul>
@@ -170,7 +175,7 @@ class AIVectorSearch_Admin_Interface {
                         <li>✅ Guaranteed uptime and performance</li>
                     </ul>
                     <small><strong>Starts at $29/month</strong></small>
-                </div>
+                </div> -->
             </label>
 
             <label class="connection-option">
@@ -418,6 +423,22 @@ class AIVectorSearch_Admin_Interface {
     private function add_admin_styles() {
         ?>
         <style>
+            .api-service-preview {
+                background: rgba(255,255,255,0.7);
+                border: 1px dashed #666;
+                border-radius: 6px;
+                padding: 15px;
+                margin-top: 20px;
+            }
+            .api-service-preview h5 {
+                margin: 0 0 8px 0;
+                color: #666;
+            }
+            .api-service-preview p {
+                margin: 0;
+                color: #666;
+                font-style: italic;
+            }
         .connection-mode-selector {
             display: grid;
             grid-template-columns: 1fr 1fr;
