@@ -24,7 +24,7 @@ class AIVectorSearch_Search_Handler {
 
     private function init_hooks() {
         // Regular WordPress search interception
-        add_action('pre_get_posts', [$this, 'intercept_product_search'], 20);
+        add_action('pre_get_posts', [$this, 'intercept_product_search'], 9999);
 
         // Woodmart AJAX search integration
         $this->init_woodmart_integration();
@@ -76,6 +76,7 @@ class AIVectorSearch_Search_Handler {
 
         // Get AI search results
         $product_ids = $this->search_products($query, $number);
+        $product_ids = $this->normalize_product_ids($product_ids);
 
         // Track analytics
         $this->track_search_analytics($query, $product_ids);
@@ -130,6 +131,7 @@ class AIVectorSearch_Search_Handler {
 
         // Get our AI search results
         $product_ids = $this->search_products($search_term, 20);
+        $product_ids = $this->normalize_product_ids($product_ids);
 
         if (!empty($product_ids)) {
             // Override the query to use our results
@@ -149,7 +151,7 @@ class AIVectorSearch_Search_Handler {
      * Regular WordPress search interception
      */
     public function intercept_product_search(WP_Query $query) {
-        if (is_admin()) {
+        if (is_admin() || ! $query->is_main_query()) {
             return;
         }
 
@@ -178,6 +180,8 @@ class AIVectorSearch_Search_Handler {
         }
 
         $product_ids = $this->search_products($search_term);
+        $product_ids = $this->normalize_product_ids($product_ids);
+
         $this->track_search_analytics($search_term, $product_ids);
 
         if (empty($product_ids)) {
@@ -203,7 +207,7 @@ class AIVectorSearch_Search_Handler {
         if ($use_semantic) {
             $ids = $this->search_semantic($term, $limit);
 
-            if (count($ids) < 5) {
+            if (count($ids) < 3) {
                 $ids = array_unique(array_merge(
                     $ids,
                     $this->search_fulltext($term, $limit)
@@ -224,6 +228,11 @@ class AIVectorSearch_Search_Handler {
         // If no results from full-text search, try SKU search as fallback
         if (empty($ids)) {
             $ids = $this->search_sku($term, $limit);
+        }
+
+        // Add fuzzy search as final fallback for non-semantic search too
+        if (empty($ids)) {
+            $ids = $this->search_fuzzy($term, $limit);
         }
 
         return $ids;
@@ -291,7 +300,9 @@ class AIVectorSearch_Search_Handler {
             if (!$embedding) {
                 return [];
             }
-            return $this->connection_manager->search_products_semantic($term, $embedding, $limit);
+
+            $results = $this->connection_manager->search_products_semantic($term, $embedding, $limit);
+            return $results;
         }
     }
 
@@ -303,12 +314,43 @@ class AIVectorSearch_Search_Handler {
     }
 
     /**
+     * Fuzzy search fallback
+     */
+    private function search_fuzzy(string $term, int $limit): array {
+        return $this->connection_manager->search_products_fuzzy($term, $limit);
+    }
+
+    /**
      * Determine if semantic search should be used
      */
     private function should_use_semantic_search(string $term): bool {
         return get_option('aivesese_semantic_toggle') === '1' &&
                strlen($term) >= 3 &&
                $this->connection_manager->is_semantic_search_available();
+    }
+
+    private function normalize_product_ids(array $ids): array {
+        $out = [];
+        foreach ($ids as $id) {
+            $p = wc_get_product($id);
+            if (!$p) continue;
+
+            // Map variations to parent
+            if ($p->is_type('variation')) {
+                $parent = $p->get_parent_id();
+                if (!$parent) continue;
+                $id = $parent;
+                $p  = wc_get_product($id);
+                if (!$p) continue;
+            }
+
+            // Keep only published products
+            if ($p->get_status() !== 'publish') continue;
+
+            // Preserve order while making unique
+            if (!isset($out[$id])) $out[$id] = true;
+        }
+        return array_map('intval', array_keys($out));
     }
 
     /**

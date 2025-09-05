@@ -76,6 +76,15 @@ class AIVectorSearch_Connection_Manager {
         }
     }
 
+    public function search_products_fuzzy(string $term, int $limit = 20): array {
+        if ($this->is_api_mode()) {
+            // Fuzzy search not available in API mode
+            return [];
+        } else {
+            return $this->supabase_client->search_products_fuzzy($term, $limit);
+        }
+    }
+
     /**
      * Sync products batch
      */
