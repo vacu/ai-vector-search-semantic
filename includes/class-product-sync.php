@@ -1,12 +1,12 @@
 <?php
 /**
- * Handles product synchronization between WooCommerce and Supabase
+ * Product Sync class with Connection Manager support
  */
 class AIVectorSearch_Product_Sync {
 
     private static $instance = null;
-    private $supabase_client;
-    private $openai_client;
+    private $connection_manager;
+    private $openai_client; // Keep for self-hosted embedding text building
 
     public static function instance() {
         if (self::$instance === null) {
@@ -16,7 +16,7 @@ class AIVectorSearch_Product_Sync {
     }
 
     private function __construct() {
-        $this->supabase_client = AIVectorSearch_Supabase_Client::instance();
+        $this->connection_manager = AIVectorSearch_Connection_Manager::instance();
         $this->openai_client = AIVectorSearch_OpenAI_Client::instance();
         $this->init_hooks();
     }
@@ -76,14 +76,15 @@ class AIVectorSearch_Product_Sync {
             $transformed = $this->transform_product($product);
             $transformed_products[] = $transformed;
 
-            if ($with_embeddings) {
+            // Only generate embeddings for self-hosted mode
+            if ($with_embeddings && !$this->connection_manager->is_api_mode()) {
                 $text = $this->openai_client->build_embedding_text_from_product($product);
                 $texts_for_embedding[] = $text;
             }
         }
 
-        // Generate embeddings if requested
-        if ($with_embeddings && !empty($texts_for_embedding)) {
+        // Generate embeddings if requested and in self-hosted mode
+        if ($with_embeddings && !$this->connection_manager->is_api_mode() && !empty($texts_for_embedding)) {
             $embeddings = $this->openai_client->embed_batch($texts_for_embedding);
 
             if (!empty($embeddings)) {
@@ -95,12 +96,12 @@ class AIVectorSearch_Product_Sync {
             }
         }
 
-        // Sync to Supabase in batches
+        // Sync using connection manager (handles both API and self-hosted)
         $success_count = 0;
         $batches = array_chunk($transformed_products, 100);
 
         foreach ($batches as $batch) {
-            if ($this->supabase_client->sync_products_batch($batch)) {
+            if ($this->connection_manager->sync_products_batch($batch)) {
                 $success_count += count($batch);
             }
         }
@@ -113,89 +114,8 @@ class AIVectorSearch_Product_Sync {
     }
 
     public function generate_missing_embeddings(): array {
-        $store_id = get_option('aivesese_store');
-        if (!$store_id) {
-            return ['success' => false, 'message' => 'Store ID missing'];
-        }
-
-        if (!$this->openai_client->is_configured()) {
-            return ['success' => false, 'message' => 'OpenAI API key missing'];
-        }
-
-        $batch_size = 25;
-        $max_loops = 400;
-        $total_updated = 0;
-        $total_skipped = 0;
-
-        for ($loop = 0; $loop < $max_loops; $loop++) {
-            $rows = $this->supabase_client->get_products_without_embeddings($batch_size);
-
-            if (empty($rows)) {
-                break;
-            }
-
-            $result = $this->process_embedding_batch($rows);
-            $total_updated += $result['updated'];
-            $total_skipped += $result['skipped'];
-        }
-
-        return [
-            'success' => true,
-            'updated' => $total_updated,
-            'skipped' => $total_skipped,
-            'completed' => empty($rows) // true if we broke out naturally
-        ];
-    }
-
-    private function process_embedding_batch(array $rows): array {
-        $embed_targets = [];
-        $skipped = 0;
-
-        foreach ($rows as $row) {
-            $sp_id = $row['id'] ?? null;
-            $wc_id = isset($row['woocommerce_id']) ? intval($row['woocommerce_id']) : 0;
-
-            if (!$sp_id || !$wc_id) {
-                $skipped++;
-                continue;
-            }
-
-            $product = wc_get_product($wc_id);
-            if (!$product) {
-                $skipped++;
-                continue;
-            }
-
-            $text = $this->openai_client->build_embedding_text_from_product($product);
-            if ($text === '') {
-                $skipped++;
-                continue;
-            }
-
-            $embed_targets[] = ['id' => $sp_id, 'text' => $text];
-        }
-
-        if (empty($embed_targets)) {
-            return ['updated' => 0, 'skipped' => $skipped];
-        }
-
-        // Generate embeddings
-        $texts = array_map(function($t) { return $t['text']; }, $embed_targets);
-        $vectors = $this->openai_client->embed_batch($texts);
-
-        if (!is_array($vectors) || count($vectors) !== count($embed_targets)) {
-            return ['updated' => 0, 'skipped' => $skipped + count($embed_targets)];
-        }
-
-        // Update products with embeddings
-        $updated = 0;
-        foreach ($embed_targets as $i => $target) {
-            if ($this->supabase_client->update_product_embedding($target['id'], $vectors[$i])) {
-                $updated++;
-            }
-        }
-
-        return ['updated' => $updated, 'skipped' => $skipped];
+        // Use connection manager to handle both API and self-hosted modes
+        return $this->connection_manager->generate_missing_embeddings();
     }
 
     private function transform_product(WC_Product $product): array {
@@ -279,10 +199,10 @@ class AIVectorSearch_Product_Sync {
 
     private function should_generate_embeddings(): bool {
         return get_option('aivesese_semantic_toggle') === '1' &&
-               $this->openai_client->is_configured();
+               $this->connection_manager->is_semantic_search_available();
     }
 
-    // Product data extraction methods
+    // Product data extraction methods (unchanged)
     private function get_product_gtin(WC_Product $product): string {
         $gtin = get_post_meta($product->get_id(), '_gtin', true);
         if ($gtin) {

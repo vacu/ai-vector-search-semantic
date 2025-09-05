@@ -160,8 +160,6 @@ class AIVectorSearch_Supabase_Client {
         $cache_key = 'fts_' . $store . '_' . $limit . '_' . md5($term);
         $rows = $this->request('POST', '/rest/v1/rpc/fts_search', $params, [], $cache_key, 20);
 
-        error_log(print_r($rows, true));
-
         return wp_list_pluck((array) $rows, 'woocommerce_id');
     }
 
@@ -192,11 +190,29 @@ class AIVectorSearch_Supabase_Client {
         $rows = $this->request('POST', '/rest/v1/rpc/semantic_search', [
             'store_id' => $store,
             'query_embedding' => $embedding,
-            'match_threshold' => 0.5,
+            'match_threshold' => 0.78,
             'p_k' => $limit,
         ], [], 'sem_' . md5($term), 20);
 
         return wp_list_pluck($rows, 'woocommerce_id');
+    }
+
+    public function search_products_fuzzy(string $term, int $limit = 20): array {
+        $store = get_option('aivesese_store');
+        if (!$store || mb_strlen($term) < 2) {
+            return [];
+        }
+
+        $params = [
+            'search_store_id' => $store,
+            'search_term' => $term,
+            'search_limit' => $limit
+        ];
+
+        $cache_key = 'fuzzy_' . $store . '_' . $limit . '_' . md5($term);
+        $rows = $this->request('POST', '/rest/v1/rpc/fuzzy_search', $params, [], $cache_key, 20);
+
+        return wp_list_pluck((array) $rows, 'woocommerce_id');
     }
 
     public function get_recommendations(array $cart_ids, int $limit = 4): array {

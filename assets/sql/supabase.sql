@@ -117,23 +117,24 @@ create index if not exists idx_products_categories
    ────────────────────────────────────────────────────────────── */
 
 -- 5.1  Semantic search  (query vector → k-NN over embeddings)
-create or replace function semantic_search(
+CREATE OR REPLACE FUNCTION semantic_search(
   store_id          uuid,
   query_embedding   vector,
-  match_threshold   float  default 0.5,
+  match_threshold   float  default 0.78,  -- Changed from 0.5 to 0.78 (more lenient)
   p_k               int    default 20
 )
-returns table (woocommerce_id bigint, distance float)
-language sql stable as $$
-  select p.woocommerce_id,
+RETURNS TABLE (woocommerce_id bigint, distance float)
+LANGUAGE sql STABLE AS $$
+  SELECT p.woocommerce_id,
          (p.embedding <=> query_embedding) as distance
-  from products p
-  where p.store_id = store_id
-    and (p.embedding <=> query_embedding) < match_threshold
-    and p.status = 'publish'
-    and p.stock_status = 'in'
-  order by distance
-  limit p_k;
+  FROM products p
+  WHERE p.store_id = store_id
+    AND p.embedding IS NOT NULL
+    AND (p.embedding <=> query_embedding) < match_threshold
+    AND p.status = 'publish'
+    AND p.stock_status IN ('in', 'out', 'backorder')  -- Changed from just 'in' to include out of stock
+  ORDER BY distance
+  LIMIT p_k;
 $$;
 
 -- 5.2  "Similar products" for PDP widget
@@ -260,14 +261,17 @@ CREATE OR REPLACE FUNCTION fts_search(
     search_limit integer DEFAULT 20
 )
 RETURNS TABLE (woocommerce_id integer, rank real)
-LANGUAGE sql
-STABLE
-AS $$
+LANGUAGE sql STABLE AS $$
 SELECT
     p.woocommerce_id,
-    ts_rank_cd(p.ts_index, websearch_to_tsquery('simple', search_term)) as rank
+    ts_rank_cd(
+        p.ts_index,
+        websearch_to_tsquery('simple', search_term),
+        32  -- Better normalization method
+    ) as rank
 FROM products p
 WHERE p.store_id = search_store_id
+  AND p.status = 'publish'
   AND p.ts_index @@ websearch_to_tsquery('simple', search_term)
 ORDER BY rank DESC
 LIMIT search_limit;
@@ -301,6 +305,37 @@ WHERE p.store_id = search_store_id
 ORDER BY rank DESC
 LIMIT search_limit;
 $$;
+
+CREATE OR REPLACE FUNCTION fuzzy_search(
+    search_store_id uuid,
+    search_term text,
+    search_limit integer DEFAULT 20
+)
+RETURNS TABLE (woocommerce_id integer, similarity_score real)
+LANGUAGE sql STABLE AS $$
+SELECT
+    p.woocommerce_id,
+    CASE
+        WHEN lower(p.name) LIKE lower(search_term) || '%' THEN 100.0::real
+        WHEN lower(p.name) LIKE '%' || lower(search_term) || '%' THEN 80.0::real
+        WHEN lower(p.description) LIKE '%' || lower(search_term) || '%' THEN 60.0::real
+        WHEN similarity(lower(p.name), lower(search_term)) > 0.3 THEN similarity(lower(p.name), lower(search_term)) * 100
+        ELSE 20.0::real
+    END as similarity_score
+FROM products p
+WHERE p.store_id = search_store_id
+  AND p.status = 'publish'
+  AND (
+    lower(p.name) LIKE '%' || lower(search_term) || '%'
+    OR lower(p.description) LIKE '%' || lower(search_term) || '%'
+    OR similarity(lower(p.name), lower(search_term)) > 0.3
+  )
+ORDER BY similarity_score DESC
+LIMIT search_limit;
+$$;
+
+-- 5. ENSURE trigram extension is available (for fuzzy search)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 /* ──────────────────────────────────────────────────────────────
    8. DONE

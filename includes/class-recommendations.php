@@ -1,11 +1,11 @@
 <?php
 /**
- * Handles product recommendations (cart and similar products)
+ * Recommendations class with Connection Manager support
  */
 class AIVectorSearch_Recommendations {
 
     private static $instance = null;
-    private $supabase_client;
+    private $connection_manager;
     private $cart_recommendations_rendered = false;
 
     public static function instance() {
@@ -16,7 +16,7 @@ class AIVectorSearch_Recommendations {
     }
 
     private function __construct() {
-        $this->supabase_client = AIVectorSearch_Supabase_Client::instance();
+        $this->connection_manager = AIVectorSearch_Connection_Manager::instance();
         $this->init_hooks();
     }
 
@@ -62,7 +62,9 @@ class AIVectorSearch_Recommendations {
             return;
         }
 
-        $recommendations = $this->supabase_client->get_recommendations($cart_ids, 4);
+        // Use connection manager for recommendations
+        $recommendations = $this->connection_manager->get_recommendations($cart_ids, 4);
+
         if (empty($recommendations)) {
             return;
         }
@@ -82,7 +84,9 @@ class AIVectorSearch_Recommendations {
         }
 
         $limit = isset($args['posts_per_page']) ? (int) $args['posts_per_page'] : 4;
-        $similar_products = $this->supabase_client->get_similar_products($product_id, $limit);
+
+        // Use connection manager for similar products
+        $similar_products = $this->connection_manager->get_similar_products($product_id, $limit);
 
         $ids = wp_list_pluck((array) $similar_products, 'woocommerce_id');
         return !empty($ids) ? $ids : $related;
