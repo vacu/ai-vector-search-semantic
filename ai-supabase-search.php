@@ -152,3 +152,24 @@ add_filter('admin_body_class', function($classes) {
     }
     return $classes;
 });
+
+add_action('plugins_loaded', function() {
+    $current_version = get_option('aivesese_plugin_version', '0');
+
+    if (version_compare($current_version, AIVESESE_PLUGIN_VERSION, '<')) {
+        // Plugin was updated, run database updates
+        aivesese_update_database();
+        update_option('aivesese_plugin_version', AIVESESE_PLUGIN_VERSION);
+    }
+});
+
+function aivesese_update_database() {
+    // Create/update analytics table
+    $analytics = AIVectorSearch_Analytics::instance();
+    $analytics->create_table();
+
+    // Any other database updates for future versions
+    // if (version_compare($old_version, '0.17.0', '<')) {
+    //     // Run updates for version 0.17.0
+    // }
+}

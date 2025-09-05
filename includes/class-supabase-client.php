@@ -160,7 +160,7 @@ class AIVectorSearch_Supabase_Client {
         $cache_key = 'fts_' . $store . '_' . $limit . '_' . md5($term);
         $rows = $this->request('POST', '/rest/v1/rpc/fts_search', $params, [], $cache_key, 20);
 
-        error_log(print_r($rows, true));
+        // error_log(print_r($rows, true));
 
         return wp_list_pluck((array) $rows, 'woocommerce_id');
     }

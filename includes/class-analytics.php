@@ -7,6 +7,7 @@ class AIVectorSearch_Analytics {
 
     private static $instance = null;
     private $table_name;
+    private $db_version = '1.0';
 
     public static function instance() {
         if (self::$instance === null) {
@@ -25,6 +26,8 @@ class AIVectorSearch_Analytics {
         // Create table on activation
         register_activation_hook(AIVESESE_PLUGIN_PATH . 'ai-supabase-search.php', [$this, 'create_table']);
 
+        add_action('admin_init', [$this, 'check_database_version']);
+
         // Add admin page
         add_action('admin_menu', [$this, 'add_analytics_page']);
 
@@ -32,6 +35,24 @@ class AIVectorSearch_Analytics {
         add_action('aivs_cleanup_analytics', [$this, 'cleanup_old_data']);
         if (!wp_next_scheduled('aivs_cleanup_analytics')) {
             wp_schedule_event(time(), 'daily', 'aivs_cleanup_analytics');
+        }
+    }
+
+    public function check_database_version() {
+        $installed_version = get_option('aivesese_analytics_db_version', '0');
+
+        if (version_compare($installed_version, $this->db_version, '<')) {
+            $this->maybe_update_database();
+        }
+    }
+
+    private function maybe_update_database() {
+        $installed_version = get_option('aivesese_analytics_db_version', '0');
+
+        // If no version recorded or version is old, update database
+        if (version_compare($installed_version, $this->db_version, '<')) {
+            $this->create_table();
+            update_option('aivesese_analytics_db_version', $this->db_version);
         }
     }
 
@@ -61,6 +82,10 @@ class AIVectorSearch_Analytics {
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
+
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'")) {
+            update_option('aivesese_analytics_db_version', $this->db_version);
+        }
     }
 
     /**
