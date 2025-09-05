@@ -183,6 +183,7 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 = 0.16.2 (Latest) =
 * **New:** Added analytics dashboard
+* **New:** Fuzzy search
 * **New:** Prepared for API managed API service alongside self-hosted
 * **New:** Dual connection mode support (API Service vs Self-Hosted)
 * **New:** License key activation system for API service
@@ -193,6 +194,8 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 * **Update:** Refactored architecture to support both deployment options
 * **Update:** Improved error handling and user feedback
 * **Update:** Enhanced security for API communications
+* **Update:** Increased match_threshold
+* **Fix:** Woodmart AJAX integration
 
 = 0.15.3 =
 * **Update:** Improved readme file and documentation
@@ -253,6 +256,7 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 = 0.16.2 (Latest) =
 * **New:** Added analytics dashboard
+* **New:** Fuzzy search
 * **New:** Prepared for API managed API service alongside self-hosted
 * **New:** Dual connection mode support (API Service vs Self-Hosted)
 * **New:** License key activation system for API service
@@ -263,6 +267,8 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 * **Update:** Refactored architecture to support both deployment options
 * **Update:** Improved error handling and user feedback
 * **Update:** Enhanced security for API communications
+* **Update:** Increased match_threshold
+* **Fix:** Woodmart AJAX integration
 
 = 0.16.0 =
 * API Support
