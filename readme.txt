@@ -4,7 +4,7 @@ Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable Tag: 0.16.2
+Stable Tag: 0.16.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -181,7 +181,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Changelog ==
 
-= 0.16.2 (Latest) =
+= 0.16.3 (Latest) =
+* **Fix:** Added track_click method
+
+= 0.16.2 =
 * **New:** Added analytics dashboard
 * **New:** Fuzzy search
 * **New:** Prepared for API managed API service alongside self-hosted
@@ -254,7 +257,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Upgrade Notice ==
 
-= 0.16.2 (Latest) =
+= 0.16.3 (Latest) =
+* **Fix:** Added track_click method
+
+= 0.16.2 =
 * **New:** Added analytics dashboard
 * **New:** Fuzzy search
 * **New:** Prepared for API managed API service alongside self-hosted

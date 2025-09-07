@@ -1,7 +1,7 @@
 <?php
 /**
  * File: includes/class-analytics.php
- * Clean Analytics Class - Properly Integrated
+ * Clean Analytics Class - Properly Integrated with track_click method
  */
 class AIVectorSearch_Analytics {
 
@@ -110,6 +110,39 @@ class AIVectorSearch_Analytics {
         ];
 
         $wpdb->insert($this->table_name, $data);
+    }
+
+    /**
+     * Track a click on search results
+     */
+    public function track_click(string $search_term, int $product_id) {
+        if (strlen($search_term) < 2 || !$product_id) {
+            return;
+        }
+
+        global $wpdb;
+
+        // Find the most recent search for this term and update it with the click
+        $recent_search = $wpdb->get_row($wpdb->prepare("
+            SELECT id FROM {$this->table_name}
+            WHERE search_term = %s
+            AND user_ip = %s
+            AND clicked_result_id IS NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+        ", $search_term, $this->get_user_ip()));
+
+        if ($recent_search) {
+            // Update existing search record with click
+            $wpdb->update(
+                $this->table_name,
+                ['clicked_result_id' => $product_id],
+                ['id' => $recent_search->id]
+            );
+        } else {
+            // Create new record for the click if no matching search found
+            $this->track_search($search_term, 'click', [$product_id], $product_id);
+        }
     }
 
     /**
@@ -439,21 +472,6 @@ class AIVectorSearch_Analytics {
                     <p>✅ Great! All searches are returning results. No opportunities found.</p>
                 <?php endif; ?>
             </div>
-
-            <!-- Upgrade Promotion -->
-            <!-- <div class="aivs-upgrade-banner">
-                <h3>🚀 Want More Insights?</h3>
-                <p>Upgrade to our API service for unlimited analytics history, customer journey tracking, and advanced reports:</p>
-                <ul>
-                    <li>✅ Unlimited search history (vs 30 days)</li>
-                    <li>✅ Customer journey tracking</li>
-                    <li>✅ Export reports to CSV/PDF</li>
-                    <li>✅ Real-time analytics dashboard</li>
-                    <li>✅ Seasonal trend analysis</li>
-                </ul>
-                <a href="https://zzzsolutions.ro/ai-search-service" target="_blank" class="button button-primary">View Pricing</a>
-                <a href="<?php //echo admin_url('options-general.php?page=aivesese'); ?>" class="button">Configure API</a>
-            </div> -->
         </div>
 
         <style>
@@ -588,29 +606,6 @@ class AIVectorSearch_Analytics {
         .aivs-opportunity-actions {
             display: flex;
             gap: 10px;
-        }
-
-        /* Upgrade Banner */
-        .aivs-upgrade-banner {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin: 30px 0;
-            text-align: center;
-        }
-        .aivs-upgrade-banner h3 {
-            color: white;
-            margin-top: 0;
-            font-size: 24px;
-        }
-        .aivs-upgrade-banner ul {
-            text-align: left;
-            display: inline-block;
-            margin: 20px 0;
-        }
-        .aivs-upgrade-banner .button {
-            margin: 10px;
         }
 
         /* Empty State */
