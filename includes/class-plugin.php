@@ -79,8 +79,8 @@ class AIVectorSearch_Plugin {
             'aivesese_connection_mode' => 'self_hosted', // Default to self-hosted
             'aivesese_semantic_toggle' => '0',
             'aivesese_auto_sync' => '0',
-            'aivesese_enable_pdp_similar' => '1',
-            'aivesese_enable_cart_below' => '1',
+            'aivesese_enable_pdp_similar' => '0',
+            'aivesese_enable_cart_below' => '0',
             'aivesese_enable_woodmart_integration' => '0',
         ];
 

@@ -113,11 +113,18 @@ class AIVectorSearch_Supabase_Client {
             return false;
         }
 
-        $result = $this->request('POST', '/rest/v1/products', $products, [
-            'on_conflict' => 'store_id,woocommerce_id'
-        ]);
+        foreach($products as $product) {
+            $result = $this->request('POST', '/rest/v1/rpc/upsert_product', [
+                'product_data' => $product
+            ]);
 
-        return !empty($result) || !is_wp_error($result);
+            if (is_wp_error($result)) {
+                $this->log_error('Upsert failed: ' . $result->get_error_message());
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function get_products_without_embeddings(int $limit = 25): array {

@@ -7,6 +7,7 @@ class AIVectorSearch_Product_Sync {
     private static $instance = null;
     private $connection_manager;
     private $openai_client; // Keep for self-hosted embedding text building
+    private $syncing_products = [];
 
     public static function instance() {
         if (self::$instance === null) {
@@ -30,6 +31,20 @@ class AIVectorSearch_Product_Sync {
         if (get_option('aivesese_auto_sync') !== '1') {
             return;
         }
+
+        $current_time = time();
+
+        // Check if we synced this product recently (within 10 seconds)
+        if (isset($this->syncing_products[$product_id])) {
+            $last_sync_time = $this->syncing_products[$product_id];
+            $time_diff = $current_time - $last_sync_time;
+            if ($time_diff < 10) {
+                return;
+            }
+        }
+
+        // Record the sync time
+        $this->syncing_products[$product_id] = $current_time;
 
         $product = wc_get_product($product_id);
         if (!$product) {
@@ -204,11 +219,153 @@ class AIVectorSearch_Product_Sync {
 
     // Product data extraction methods (unchanged)
     private function get_product_gtin(WC_Product $product): string {
-        $gtin = get_post_meta($product->get_id(), '_gtin', true);
-        if ($gtin) {
-            return $gtin;
+        // Define priority order of GTIN/barcode meta keys
+        $gtin_meta_keys = [
+            '_gtin',                    // Generic GTIN field
+            '_global_unique_id',        // WooCommerce core field
+            '_ean',                     // European Article Number
+            '_upc',                     // Universal Product Code
+            '_isbn',                    // International Standard Book Number
+            '_mpn',                     // Manufacturer Part Number
+            '_barcode',                 // Generic barcode field
+            '_product_gtin',            // Some GTIN plugins
+            '_woocommerce_gtin',        // WooCommerce GTIN extensions
+            '_yith_barcode',            // YITH Barcode plugin
+            '_atum_barcode',            // ATUM Inventory plugin
+            '_wc_barcode',              // WC Barcode plugins
+            '_product_barcode',         // Generic product barcode
+            '_gs1_gtin',               // GS1 standard GTIN
+            '_gtin14',                  // GTIN-14 format
+            '_gtin13',                  // GTIN-13 format (EAN-13)
+            '_gtin12',                  // GTIN-12 format (UPC-A)
+            '_gtin8',                   // GTIN-8 format (EAN-8)
+            '_article_number',          // Article/item number
+            '_manufacturer_sku',        // Manufacturer SKU (sometimes contains GTIN)
+        ];
+
+        // Try each meta key in priority order
+        foreach ($gtin_meta_keys as $meta_key) {
+            $value = get_post_meta($product->get_id(), $meta_key, true);
+            if ($value && is_string($value)) {
+                $cleaned_value = $this->clean_gtin_value($value);
+                if ($this->is_valid_gtin($cleaned_value)) {
+                    return $cleaned_value;
+                }
+            }
         }
-        return get_post_meta($product->get_id(), '_ean', true) ?: '';
+
+        // For variable products, try to get GTIN from variations
+        if ($product->is_type('variable')) {
+            $variation_ids = $product->get_children();
+
+            foreach ($variation_ids as $variation_id) {
+                foreach ($gtin_meta_keys as $meta_key) {
+                    $value = get_post_meta($variation_id, $meta_key, true);
+                    if ($value && is_string($value)) {
+                        $cleaned_value = $this->clean_gtin_value($value);
+                        if ($this->is_valid_gtin($cleaned_value)) {
+                            return $cleaned_value;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check product attributes for GTIN-like values
+        $attributes = $product->get_attributes();
+        $gtin_attribute_names = ['gtin', 'ean', 'upc', 'isbn', 'barcode', 'mpn'];
+
+        foreach ($attributes as $attribute) {
+            $attribute_name = strtolower($attribute->get_name());
+
+            foreach ($gtin_attribute_names as $gtin_name) {
+                if (strpos($attribute_name, $gtin_name) !== false) {
+                    if ($attribute->is_taxonomy()) {
+                        $terms = wp_get_post_terms($product->get_id(), $attribute->get_name(), ['fields' => 'names']);
+                        if (!is_wp_error($terms) && !empty($terms)) {
+                            $cleaned_value = $this->clean_gtin_value($terms[0]);
+                            if ($this->is_valid_gtin($cleaned_value)) {
+                                return $cleaned_value;
+                            }
+                        }
+                    } else {
+                        $values = $attribute->get_options();
+                        if (!empty($values)) {
+                            $cleaned_value = $this->clean_gtin_value($values[0]);
+                            if ($this->is_valid_gtin($cleaned_value)) {
+                                return $cleaned_value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Clean and normalize GTIN value
+     */
+    private function clean_gtin_value(string $value): string {
+        // Remove whitespace and common separators
+        $cleaned = preg_replace('/[\s\-_\.]+/', '', trim($value));
+
+        // Remove non-numeric characters (GTINs should be numeric)
+        $cleaned = preg_replace('/[^0-9]/', '', $cleaned);
+
+        return $cleaned;
+    }
+
+    /**
+     * Validate if a string is a valid GTIN format
+     */
+    private function is_valid_gtin(string $value): bool {
+        if (empty($value)) {
+            return false;
+        }
+
+        // Check if it's numeric and has valid GTIN length
+        if (!ctype_digit($value)) {
+            return false;
+        }
+
+        $length = strlen($value);
+        $valid_lengths = [8, 12, 13, 14]; // GTIN-8, GTIN-12 (UPC), GTIN-13 (EAN), GTIN-14
+
+        if (!in_array($length, $valid_lengths)) {
+            return false;
+        }
+
+        // Optional: Add check digit validation for more robust validation
+        // This is a simplified version - you could implement full GTIN check digit validation
+
+        return true;
+    }
+
+    /**
+     * Validate GTIN check digit (optional enhanced validation)
+     */
+    private function validate_gtin_check_digit(string $gtin): bool {
+        $length = strlen($gtin);
+
+        if (!in_array($length, [8, 12, 13, 14])) {
+            return false;
+        }
+
+        // Pad to 14 digits for uniform calculation
+        $padded_gtin = str_pad($gtin, 14, '0', STR_PAD_LEFT);
+
+        $sum = 0;
+        for ($i = 0; $i < 13; $i++) {
+            $digit = (int)$padded_gtin[$i];
+            $sum += ($i % 2 === 0) ? $digit * 3 : $digit;
+        }
+
+        $check_digit = (10 - ($sum % 10)) % 10;
+        $actual_check_digit = (int)$padded_gtin[13];
+
+        return $check_digit === $actual_check_digit;
     }
 
     private function get_product_image_url(WC_Product $product): string {
@@ -280,7 +437,51 @@ class AIVectorSearch_Product_Sync {
     }
 
     private function get_product_cost_price(WC_Product $product): ?float {
-        $cost = get_post_meta($product->get_id(), '_cost_price', true);
-        return $cost ? floatval($cost) : null;
+        // Try COGS total value first (your current implementation)
+        $cogs_cost = get_post_meta($product->get_id(), '_cogs_total_value', true);
+        if ($cogs_cost && is_numeric($cogs_cost)) {
+            return floatval($cogs_cost);
+        }
+
+        // Fallback to generic cost price meta
+        $generic_cost = get_post_meta($product->get_id(), '_cost_price', true);
+        if ($generic_cost && is_numeric($generic_cost)) {
+            return floatval($generic_cost);
+        }
+
+        // Additional fallbacks for common COGS plugin meta keys
+        $fallback_keys = [
+            '_wc_cog_cost',           // WooCommerce Cost of Goods plugin
+            '_purchase_price',        // Some accounting plugins
+            '_product_cost',          // Generic cost field
+            '_wholesale_price',       // Sometimes used as cost basis
+        ];
+
+        foreach ($fallback_keys as $meta_key) {
+            $cost = get_post_meta($product->get_id(), $meta_key, true);
+            if ($cost && is_numeric($cost) && floatval($cost) > 0) {
+                return floatval($cost);
+            }
+        }
+
+        // For variable products, try to get cost from variations
+        if ($product->is_type('variable')) {
+            $variation_ids = $product->get_children();
+            $costs = [];
+
+            foreach ($variation_ids as $variation_id) {
+                $variation_cost = get_post_meta($variation_id, '_cogs_total_value', true);
+                if ($variation_cost && is_numeric($variation_cost)) {
+                    $costs[] = floatval($variation_cost);
+                }
+            }
+
+            if (!empty($costs)) {
+                // Return average cost of variations
+                return array_sum($costs) / count($costs);
+            }
+        }
+
+        return null;
     }
 }

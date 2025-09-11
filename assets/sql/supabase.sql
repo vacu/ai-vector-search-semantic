@@ -228,6 +228,23 @@ create policy products_public_select
   for select
   using (status = 'publish');
 
+CREATE POLICY "products_anon_insert"
+ON products FOR INSERT
+TO anon
+WITH CHECK (store_id IS NOT NULL);  -- Only allow inserts with valid store_id
+
+CREATE POLICY "products_anon_update"
+ON products FOR UPDATE
+TO anon
+USING (store_id IS NOT NULL)  -- Only update products with store_id
+WITH CHECK (store_id IS NOT NULL);  -- Ensure store_id remains valid after update
+
+-- Keep the public policy for front-end access
+CREATE POLICY "products_public_select"
+ON products FOR SELECT
+TO public
+USING (status = 'publish');
+
 /* Views inherit RLS from base table. */
 
 /* ──────────────────────────────────────────────────────────────
@@ -336,6 +353,65 @@ $$;
 
 -- 5. ENSURE trigram extension is available (for fuzzy search)
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE OR REPLACE FUNCTION upsert_product(product_data jsonb)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO products (
+        id, store_id, woocommerce_id, sku, gtin, name, description, image_url,
+        brand, categories, tags, regular_price, sale_price, cost_price,
+        stock_quantity, stock_status, attributes, status, average_rating, review_count
+    )
+    VALUES (
+        (product_data->>'id')::uuid,
+        (product_data->>'store_id')::uuid,
+        (product_data->>'woocommerce_id')::bigint,
+        product_data->>'sku',
+        product_data->>'gtin',
+        product_data->>'name',
+        product_data->>'description',
+        product_data->>'image_url',
+        product_data->>'brand',
+        CASE WHEN product_data->'categories' IS NOT NULL
+             THEN ARRAY(SELECT jsonb_array_elements_text(product_data->'categories'))
+             ELSE NULL END,
+        CASE WHEN product_data->'tags' IS NOT NULL
+             THEN ARRAY(SELECT jsonb_array_elements_text(product_data->'tags'))
+             ELSE NULL END,
+        (product_data->>'regular_price')::numeric,
+        (product_data->>'sale_price')::numeric,
+        (product_data->>'cost_price')::numeric,
+        (product_data->>'stock_quantity')::int,
+        product_data->>'stock_status',
+        product_data->'attributes',
+        product_data->>'status',
+        (product_data->>'average_rating')::numeric,
+        (product_data->>'review_count')::int
+    )
+    ON CONFLICT (store_id, woocommerce_id)
+    DO UPDATE SET
+        sku = EXCLUDED.sku,
+        gtin = EXCLUDED.gtin,                    -- Added
+        name = EXCLUDED.name,
+        description = EXCLUDED.description,
+        image_url = EXCLUDED.image_url,          -- Added
+        brand = EXCLUDED.brand,                  -- Added
+        categories = EXCLUDED.categories,        -- Added
+        tags = EXCLUDED.tags,                    -- Added
+        regular_price = EXCLUDED.regular_price,
+        sale_price = EXCLUDED.sale_price,
+        cost_price = EXCLUDED.cost_price,        -- Added
+        stock_quantity = EXCLUDED.stock_quantity,
+        stock_status = EXCLUDED.stock_status,
+        attributes = EXCLUDED.attributes,        -- Added
+        status = EXCLUDED.status,                -- Added
+        average_rating = EXCLUDED.average_rating, -- Added
+        review_count = EXCLUDED.review_count,    -- Added
+        updated_at = NOW();
+END;
+$$;
 
 /* ──────────────────────────────────────────────────────────────
    8. DONE

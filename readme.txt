@@ -4,7 +4,7 @@ Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable Tag: 0.16.3
+Stable Tag: 0.16.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -181,7 +181,14 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Changelog ==
 
-= 0.16.3 (Latest) =
+= 0.16.4 (Latest) =
+* **New:** Custom SQL upsert function for reliable product synchronization
+* **Fix:** Product sync failures due to Row Level Security (RLS) policy conflicts
+* **Fix:** Auto-sync triggering duplicate requests due to WooCommerce hook behavior
+* **Update:** Enhanced GTIN field mapping for EAN/UPC/ISBN product codes
+* **Update:** Improved Cost of Goods Sold (COGS) field detection and mapping
+
+= 0.16.3 =
 * **Fix:** Added track_click method
 
 = 0.16.2 =
@@ -257,7 +264,14 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Upgrade Notice ==
 
-= 0.16.3 (Latest) =
+= 0.16.4 (Latest) =
+* **New:** Custom SQL upsert function for reliable product synchronization
+* **Fix:** Product sync failures due to Row Level Security (RLS) policy conflicts
+* **Fix:** Auto-sync triggering duplicate requests due to WooCommerce hook behavior
+* **Update:** Enhanced GTIN field mapping for EAN/UPC/ISBN product codes
+* **Update:** Improved Cost of Goods Sold (COGS) field detection and mapping
+
+= 0.16.3 =
 * **Fix:** Added track_click method
 
 = 0.16.2 =
