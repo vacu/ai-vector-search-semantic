@@ -4,7 +4,7 @@ Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable Tag: 0.16.5
+Stable Tag: 0.16.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -97,6 +97,16 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 2. Create a new API key
 3. Ensure billing is set up for embedding API usage
 
+== Screenshots ==
+
+1. Dashboard notice showing new WP-CLI support and quick setup actions.
+2. Settings menu entries added by AI Vector Search (Search Analytics, Supabase Status, Sync Products).
+3. Search Analytics dashboard with success rate, CTR, and popular search terms.
+4. Main plugin settings page with Supabase and OpenAI configuration, plus WP-CLI schema installation.
+5. Status page showing store health overview and configuration summary.
+6. Sync Products page with full sync, batch sync, and embeddings generation options.
+7. Setup guide for manual and WP-CLI installation, including PostgreSQL connection and OpenAI configuration.
+
 == Frequently Asked Questions ==
 
 = Is OpenAI required? =
@@ -181,7 +191,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Changelog ==
 
-= 0.16.5 (Latest) =
+= 0.16.5.1 (Latest) =
+* **Update:** Updated readme with screenshots
+
+= 0.16.5 =
 * **New:** WP-CLI schema installation commands for reliable database setup
 * **New:** Direct PostgreSQL connection support with encrypted credential storage
 * **New:** Three-tier installation system: Manual copy/paste, WP-CLI commands, and Admin interface buttons
@@ -276,7 +289,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Upgrade Notice ==
 
-= 0.16.5 (Latest) =
+= 0.16.5.1 (Latest) =
+* **Update:** Updated readme with screenshots
+
+= 0.16.5 =
 * **New:** WP-CLI schema installation commands for reliable database setup
 * **New:** Direct PostgreSQL connection support with encrypted credential storage
 * **New:** Three-tier installation system: Manual copy/paste, WP-CLI commands, and Admin interface buttons
