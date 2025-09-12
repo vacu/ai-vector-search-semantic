@@ -33,8 +33,13 @@ class AIVectorSearch_Admin_Interface {
         add_action('wp_ajax_aivesese_toggle_help', [$this, 'handle_help_toggle']);
         add_action('wp_ajax_aivesese_activate_license', [$this, 'handle_license_activation']);
         add_action('wp_ajax_aivesese_test_connection', [$this, 'handle_test_connection']);
+        add_action('wp_ajax_aivesese_postgres_install_schema', [$this, 'handle_postgres_install_schema']);
+        add_action('wp_ajax_aivesese_postgres_check_status', [$this, 'handle_postgres_check_status']);
     }
 
+    /**
+     * Enhanced register_settings with PostgreSQL connection string
+     */
     public function register_settings() {
         $settings = [
             // Connection mode
@@ -48,6 +53,9 @@ class AIVectorSearch_Admin_Interface {
             'key' => 'Supabase service / anon key',
             'store' => 'Store ID (UUID)',
             'openai' => 'OpenAI API key (only if semantic search is enabled)',
+
+            // NEW: PostgreSQL connection string for WP-CLI
+            'postgres_connection_string' => 'PostgreSQL Connection String (for WP-CLI schema installation)',
 
             // Feature toggles
             'semantic_toggle' => 'Enable semantic (vector) search',
@@ -73,6 +81,7 @@ class AIVectorSearch_Admin_Interface {
             'key' => 'aivesese_passthru',
             'store' => 'sanitize_text_field',
             'openai' => 'aivesese_passthru',
+            'postgres_connection_string' => 'aivesese_passthru', // Will be encrypted
         ];
 
         $config = [
@@ -132,6 +141,15 @@ class AIVectorSearch_Admin_Interface {
                 ['field_id' => $id, 'conditional' => 'self_hosted']
             );
         }
+
+        // PostgreSQL connection string (NEW)
+        add_settings_field(
+            'aivesese_postgres_connection_string',
+            'PostgreSQL Connection String',
+            [$this, 'render_postgres_connection_field'],
+            'aivesese',
+            'aivesese_section'
+        );
 
         // Feature toggles
         $checkbox_fields = [
@@ -1046,64 +1064,117 @@ class AIVectorSearch_Admin_Interface {
     }
 
     private function render_setup_instructions() {
-        echo '<div class="notice notice-info inline" style="margin: 10px 0; padding: 10px;">';
-        echo '<p><strong>🆕 SQL Updated!</strong> New version includes partial SKU search and Woodmart integration support.</p>';
+        echo '<div class="setup-flow">';
+
+        // Step 1: Supabase Setup
+        echo '<div class="setup-step">';
+        echo '<h3>🚀 Step 1: Create Your Supabase Project</h3>';
+        echo '<ol>';
+        echo '<li>Go to <a href="https://app.supabase.io/" target="_blank" rel="noopener">supabase.com</a> and create a free account</li>';
+        echo '<li>Click "New Project" and choose your organization</li>';
+        echo '<li>Set a project name and strong database password</li>';
+        echo '<li>Choose a region close to your users</li>';
+        echo '<li>Wait 2-3 minutes for project setup to complete</li>';
+        echo '</ol>';
         echo '</div>';
 
-        echo '<h2>' . esc_html__('How to find your Supabase credentials:', 'ai-vector-search-semantic') . '</h2>';
+        // Step 2: Get Credentials
+        echo '<div class="setup-step">';
+        echo '<h3>🔑 Step 2: Get Your API Credentials</h3>';
         echo '<ol>';
-        echo '<li>' . sprintf(
-            esc_html__('Go to your Supabase project dashboard at %s.', 'ai-vector-search-semantic'),
-            '<a href="https://app.supabase.io/" target="_blank">https://app.supabase.io/</a>'
-        ) . '</li>';
-        echo '<li>' . esc_html__('Navigate to "Project Settings" > "API".', 'ai-vector-search-semantic') . '</li>';
-        echo '<li>' . esc_html__('Your Supabase URL is the "URL" value (e.g., https://xyz.supabase.co).', 'ai-vector-search-semantic') . '</li>';
-        echo '<li>' . esc_html__('Your Supabase service role key or anon key can be found under "Project API keys".', 'ai-vector-search-semantic') . '</li>';
+        echo '<li>In your Supabase project, go to <strong>Settings → API</strong></li>';
+        echo '<li>Copy your <strong>Project URL</strong> (looks like: <code>https://xyz.supabase.co</code>)</li>';
+        echo '<li>Copy your <strong>service_role</strong> key from "Project API keys" section</li>';
+        echo '<li>Paste both values in the configuration form above ⬆️</li>';
         echo '</ol>';
+        echo '</div>';
 
-        echo '<h2>' . esc_html__('How to find your OpenAI API key:', 'ai-vector-search-semantic') . '</h2>';
-        echo '<p>' . sprintf(
-            esc_html__('If you enable semantic search, you will need an OpenAI API key from %s.', 'ai-vector-search-semantic'),
-            '<a href="https://beta.openai.com/account/api-keys" target="_blank">OpenAI website</a>'
-        ) . '</p>';
+        // Step 3: PostgreSQL Connection (NEW)
+        echo '<div class="setup-step">';
+        echo '<h3>🔗 Step 3: Get PostgreSQL Connection String (for WP-CLI)</h3>';
+        echo '<ol>';
+        echo '<li>In your Supabase project, go to <strong>Settings → Database</strong></li>';
+        echo '<li>Scroll down to <strong>"Connection parameters"</strong></li>';
+        echo '<li>Copy the <strong>"Connection string"</strong> in URI format</li>';
+        echo '<li>Paste it in the PostgreSQL Connection String field above ⬆️</li>';
+        echo '</ol>';
+        echo '<div class="notice notice-info inline" style="margin: 15px 0;">';
+        echo '<p><strong>💡 Why PostgreSQL connection?</strong> This enables professional WP-CLI commands for reliable schema installation:</p>';
+        echo '<ul style="margin-left: 20px;">';
+        echo '<li><code>wp aivs install-schema</code> - One-command schema installation</li>';
+        echo '<li><code>wp aivs sync-products</code> - Bulk product synchronization</li>';
+        echo '<li><code>wp aivs check-schema</code> - Comprehensive status checking</li>';
+        echo '</ul>';
+        echo '</div>';
+        echo '</div>';
+
+        // Step 4: OpenAI (Optional)
+        echo '<div class="setup-step">';
+        echo '<h3>🤖 Step 4: OpenAI Setup (Optional)</h3>';
+        echo '<p>For AI semantic search, you\'ll need an OpenAI API key:</p>';
+        echo '<ol>';
+        echo '<li>Visit <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI API Keys</a></li>';
+        echo '<li>Create a new API key</li>';
+        echo '<li>Add billing information (required for API usage)</li>';
+        echo '<li>Paste the key in the OpenAI field above ⬆️</li>';
+        echo '</ol>';
+        echo '<div class="notice notice-warning inline" style="margin: 15px 0;">';
+        echo '<p><strong>💰 Cost:</strong> Embeddings cost ~$0.05-$1.00 per 1,000 products (one-time setup cost)</p>';
+        echo '</div>';
+        echo '</div>';
+
+        echo '</div>'; // close setup-flow
+
+        // Add some styling
+        echo '<style>
+        .setup-flow {
+            margin: 20px 0;
+        }
+        .setup-step {
+            margin: 25px 0;
+            padding: 20px;
+            background: #fafafa;
+            border-left: 4px solid #0073aa;
+            border-radius: 0 8px 8px 0;
+        }
+        .setup-step h3 {
+            margin-top: 0;
+            color: #0073aa;
+        }
+        .setup-step code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+        }
+        </style>';
     }
 
     private function render_sql_section() {
-        $sql_content = $this->get_sql_content();
+        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+
+        if ($connection_mode !== 'self_hosted') {
+            return; // Don't show SQL section for API mode
+        }
 
         echo '<hr>';
-        echo '<div class="notice notice-success inline" style="margin: 15px 0; padding: 12px; border-left: 4px solid #46b450;">';
-        echo '<h3 style="margin-top: 0;">🎉 Enhanced SQL Schema (v2.0)</h3>';
-        echo '<p><strong>New in this version:</strong></p>';
-        echo '<ul style="margin-left: 20px;">';
-        echo '<li>✨ <code>sku_search()</code> function for partial SKU matching</li>';
-        echo '<li>🔍 Enhanced <code>fts_search()</code> with better ranking</li>';
-        echo '<li>🚀 Optimized indexes for faster search performance</li>';
-        echo '</ul>';
+        echo '<div class="aivesese-schema-section">';
+
+        if (!$this->validate_supabase_connection()) {
+            $this->render_connection_required_notice();
+            echo '</div>';
+            return;
+        }
+
+        // Load migration runner for status
+        require_once AIVESESE_PLUGIN_PATH . 'includes/migrations/class-runner.php';
+        $migration_status = \ZZZSolutions\VectorSearch\Migrations\Runner::getStatus();
+
+        $this->render_installation_options($migration_status);
+
         echo '</div>';
 
-        echo '<h2>' . esc_html__('Install/Update the SQL in Supabase', 'ai-vector-search-semantic') . '</h2>';
-        echo '<ol>';
-        echo '<li>' . esc_html__('Open your Supabase project → SQL Editor → New query.', 'ai-vector-search-semantic') . '</li>';
-        echo '<li>' . esc_html__('Click "Copy SQL" below and paste it into the editor.', 'ai-vector-search-semantic') . '</li>';
-        echo '<li>' . esc_html__('Press RUN and wait for success.', 'ai-vector-search-semantic') . '</li>';
-        echo '<li><strong>' . esc_html__('✅ Safe to re-run: This SQL uses CREATE OR REPLACE and IF NOT EXISTS.', 'ai-vector-search-semantic') . '</strong></li>';
-        echo '</ol>';
-
-        if (!$sql_content) {
-            echo '<div class="notice notice-error"><p>' .
-                esc_html__('Could not find supabase.sql. Place it at assets/sql/supabase.sql (recommended).', 'ai-vector-search-semantic') .
-                '</p></div>';
-        } else {
-            echo '<p><button class="button button-primary" id="ai-copy-sql">📋 Copy Updated SQL</button> ';
-            echo '<small style="opacity:.75;margin-left:.5rem">' .
-                esc_html__('Paste into Supabase → SQL Editor and run it.', 'ai-vector-search-semantic') .
-                '</small></p>';
-            echo '<textarea id="ai-sql" rows="22" style="width:100%;font-family:Menlo,Consolas,monospace;border:2px solid #46b450;" readonly>' .
-                esc_textarea($sql_content) .
-                '</textarea>';
-            echo '<p id="ai-copy-status" style="display:none;margin-top:.5rem;"></p>';
-        }
+        $this->add_postgres_installation_scripts();
     }
 
     private function get_sql_content(): string {
@@ -1326,5 +1397,920 @@ class AIVectorSearch_Admin_Interface {
             wp_safe_redirect(remove_query_arg(['aivesese_sql_v2_dismiss', '_wpnonce']));
             exit;
         }
+    }
+
+    /**
+     * Render PostgreSQL connection string field
+     */
+    public function render_postgres_connection_field() {
+        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $value = get_option('aivesese_postgres_connection_string');
+        $has_value = !empty($value);
+
+        if ($connection_mode !== 'self_hosted') {
+            echo '<p><em>PostgreSQL connection is only needed for self-hosted mode.</em></p>';
+            return;
+        }
+
+        echo '<div class="postgres-connection-field">';
+
+        if ($has_value) {
+            echo '<div class="connection-status configured">';
+            echo '<span class="dashicons dashicons-yes-alt"></span>';
+            echo '<strong>PostgreSQL Connection Configured</strong>';
+            echo '<p>Connection string is securely stored and ready for WP-CLI commands.</p>';
+            echo '<button type="button" class="button" onclick="toggleConnectionString()">Update Connection String</button>';
+            echo '</div>';
+        }
+
+        echo '<div id="connection-string-input" style="' . ($has_value ? 'display: none;' : '') . '">';
+        echo '<textarea id="aivesese_postgres_connection_string" name="aivesese_postgres_connection_string" ';
+        echo 'rows="3" cols="80" class="large-text" placeholder="postgresql://username:password@hostname:port/database">';
+        echo esc_textarea($value);
+        echo '</textarea>';
+
+        echo '<div class="postgres-connection-help">';
+        echo '<h4>🔗 How to get your PostgreSQL connection string:</h4>';
+        echo '<ol>';
+        echo '<li>Go to your Supabase project → <strong>Settings</strong> → <strong>Database</strong></li>';
+        echo '<li>Scroll down to <strong>"Connection parameters"</strong> or <strong>"Connection pooling"</strong></li>';
+        echo '<li>Copy the <strong>"Connection string"</strong> (URI format)</li>';
+        echo '<li>Make sure to use the <strong>direct connection</strong> (not pooled) for schema operations</li>';
+        echo '</ol>';
+
+        echo '<div class="connection-string-examples">';
+        echo '<p><strong>📝 Example format:</strong></p>';
+        echo '<code>postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres</code>';
+        echo '</div>';
+
+        echo '<div class="security-note">';
+        echo '<p><strong>🔒 Security:</strong> This connection string will be encrypted and stored securely in your WordPress database.</p>';
+        echo '</div>';
+
+        echo '</div>';
+        echo '</div>';
+
+        // WP-CLI Command Info
+        echo '<div class="wp-cli-info">';
+        echo '<h4>⚡ WP-CLI Schema Installation</h4>';
+        echo '<p>Once configured, you can install/update your schema with one command:</p>';
+        echo '<div class="cli-command-box">';
+        echo '<code>wp aivs install-schema</code>';
+        echo '<button type="button" class="button button-small" onclick="copyCliCommand()">Copy Command</button>';
+        echo '</div>';
+
+        echo '<p><strong>Available WP-CLI commands:</strong></p>';
+        echo '<ul style="margin-left: 20px;">';
+        echo '<li><code>wp aivs install-schema</code> - Install/update database schema</li>';
+        echo '<li><code>wp aivs check-schema</code> - Check schema status</li>';
+        echo '<li><code>wp aivs test-connection</code> - Test database connection</li>';
+        echo '<li><code>wp aivs sync-products</code> - Sync WooCommerce products</li>';
+        echo '</ul>';
+
+        echo '<p><em>💡 WP-CLI provides a reliable, professional way to manage database schema installations.</em></p>';
+        echo '</div>';
+
+        echo '</div>'; // close postgres-connection-field
+
+        $this->add_postgres_connection_scripts();
+    }
+
+    /**
+     * Add JavaScript for PostgreSQL connection field
+     */
+    private function add_postgres_connection_scripts() {
+        ?>
+        <script>
+        function toggleConnectionString() {
+            const input = document.getElementById('connection-string-input');
+            const status = document.querySelector('.connection-status');
+
+            if (input.style.display === 'none') {
+                input.style.display = 'block';
+                status.style.display = 'none';
+            } else {
+                input.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        function copyCliCommand() {
+            const command = 'wp aivs install-schema';
+            navigator.clipboard.writeText(command).then(function() {
+                alert('✅ WP-CLI command copied to clipboard!');
+            }).catch(function() {
+                // Fallback
+                const textArea = document.createElement('textarea');
+                textArea.value = command;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('✅ WP-CLI command copied to clipboard!');
+            });
+        }
+        </script>
+
+        <style>
+        .postgres-connection-field {
+            max-width: 800px;
+            margin: 20px 0;
+        }
+
+        .connection-status {
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #46b450;
+            background: #f0f9ff;
+            margin-bottom: 15px;
+        }
+
+        .connection-status .dashicons {
+            color: #46b450;
+            margin-right: 8px;
+        }
+
+        .postgres-connection-help {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .postgres-connection-help h4 {
+            margin-top: 0;
+            color: #0073aa;
+        }
+
+        .connection-string-examples {
+            background: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 3px solid #0073aa;
+        }
+
+        .connection-string-examples code {
+            display: block;
+            word-break: break-all;
+            font-size: 12px;
+            color: #d63638;
+        }
+
+        .security-note {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border-left: 3px solid #ffc107;
+        }
+
+        .wp-cli-info {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border-left: 4px solid #0073aa;
+        }
+
+        .wp-cli-info h4 {
+            margin-top: 0;
+            color: #0073aa;
+        }
+
+        .cli-command-box {
+            background: #23282d;
+            color: #f1f1f1;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .cli-command-box code {
+            background: none;
+            color: #46b450;
+            font-size: 16px;
+            flex: 1;
+            font-weight: bold;
+        }
+
+        .wp-cli-info ul {
+            background: rgba(255,255,255,0.7);
+            padding: 15px 20px;
+            border-radius: 4px;
+        }
+
+        .wp-cli-info li {
+            margin: 8px 0;
+            font-family: monospace;
+        }
+        </style>
+        <?php
+    }
+
+    /**
+     * Handle PostgreSQL schema installation via AJAX
+     */
+    public function handle_postgres_install_schema() {
+        check_ajax_referer('aivesese_postgres_install_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized access']);
+            return;
+        }
+
+        // Load the migration runner
+        require_once AIVESESE_PLUGIN_PATH . 'includes/migrations/class-runner.php';
+
+        // Run the migration
+        $result = \ZZZSolutions\VectorSearch\Migrations\Runner::run();
+
+        if ($result['ok']) {
+            wp_send_json_success([
+                'message' => $result['msg'],
+                'details' => $result['details'] ?? []
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => $result['msg'],
+                'details' => $result['details'] ?? []
+            ]);
+        }
+    }
+
+    /**
+     * Handle PostgreSQL status check via AJAX
+     */
+    public function handle_postgres_check_status() {
+        check_ajax_referer('aivesese_postgres_status_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized access']);
+            return;
+        }
+
+        // Load the migration runner
+        require_once AIVESESE_PLUGIN_PATH . 'includes/migrations/class-runner.php';
+
+        $status = \ZZZSolutions\VectorSearch\Migrations\Runner::getStatus();
+        wp_send_json_success($status);
+    }
+
+    /**
+     * Render installation options (PostgreSQL + Manual)
+     */
+    private function render_installation_options(array $migration_status) {
+        echo '<h2>🗄️ Database Schema Installation</h2>';
+
+        // Show current status if already installed
+        $installed_time = get_option('aivesese_schema_installed');
+        $install_method = get_option('aivesese_schema_install_method', 'unknown');
+
+        if ($installed_time) {
+            echo '<div class="notice notice-success inline">';
+            echo '<h3>✅ Schema Already Installed</h3>';
+            echo '<p>Installed on <strong>' . date('M j, Y \a\t g:i A', $installed_time) . '</strong>';
+            if ($install_method) {
+                echo ' via <strong>' . esc_html($install_method) . '</strong>';
+            }
+            echo '</p>';
+            echo '<p>';
+            echo '<button type="button" class="button" id="postgres-reinstall-btn">Update Schema</button> ';
+            echo '<button type="button" class="button button-small" id="postgres-check-status-btn">Check Status</button>';
+            echo '</p>';
+            echo '</div>';
+        }
+
+        // Installation options
+        echo '<div class="installation-options">';
+
+        // Option 1: PostgreSQL Direct Installation
+        if ($migration_status['can_run']) {
+            $this->render_postgres_installation_option();
+        } else {
+            $this->render_postgres_installation_unavailable($migration_status);
+        }
+
+        // Option 2: Manual Installation
+        $this->render_manual_installation_option();
+
+        echo '</div>';
+    }
+
+    /**
+     * Render PostgreSQL installation option (available)
+     */
+    private function render_postgres_installation_option() {
+        echo '<div class="installation-option postgres-option">';
+        echo '<h3>🚀 Direct PostgreSQL Installation (Recommended)</h3>';
+        echo '<p>Install schema directly via PostgreSQL connection - fastest and most reliable method.</p>';
+
+        echo '<div class="postgres-benefits">';
+        echo '<ul>';
+        echo '<li>✅ <strong>One-click installation</strong> - No copy/paste needed</li>';
+        echo '<li>✅ <strong>Transactional safety</strong> - Automatic rollback on errors</li>';
+        echo '<li>✅ <strong>Real-time feedback</strong> - See exactly what happens</li>';
+        echo '<li>✅ <strong>Professional grade</strong> - Same method used by WP-CLI</li>';
+        echo '</ul>';
+        echo '</div>';
+
+        echo '<div class="postgres-action">';
+        echo '<button type="button" class="button button-primary button-large" id="postgres-install-btn">';
+        echo '<span class="dashicons dashicons-database" style="margin-right: 8px;"></span>';
+        echo 'Install Schema via PostgreSQL';
+        echo '</button>';
+        echo '</div>';
+
+        echo '<div id="postgres-installation-progress" style="display: none; margin: 20px 0;">';
+        echo '<div class="progress-bar" style="background: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden; margin: 10px 0;">';
+        echo '<div class="progress-fill" style="background: #0073aa; height: 100%; width: 0%; transition: width 0.3s ease;"></div>';
+        echo '</div>';
+        echo '<div class="progress-text" style="font-style: italic; color: #666;">Preparing installation...</div>';
+        echo '</div>';
+
+        echo '<div id="postgres-installation-result" style="margin-top: 20px;"></div>';
+
+        echo '</div>'; // close postgres-option
+    }
+
+    /**
+     * Render PostgreSQL installation unavailable notice
+     */
+    private function render_postgres_installation_unavailable(array $status) {
+        echo '<div class="installation-option postgres-unavailable">';
+        echo '<h3>🚀 Direct PostgreSQL Installation</h3>';
+        echo '<div class="notice notice-warning inline">';
+        echo '<p><strong>⚠️ PostgreSQL installation not available</strong></p>';
+
+        echo '<div class="requirements-check">';
+        echo '<h4>Requirements Status:</h4>';
+        echo '<ul>';
+
+        foreach ($status['requirements'] as $requirement => $met) {
+            $icon = $met ? '✅' : '❌';
+            $req_name = ucwords(str_replace('_', ' ', $requirement));
+            echo "<li>{$icon} {$req_name}</li>";
+        }
+
+        echo '</ul>';
+        echo '</div>';
+
+        if (!$status['requirements']['psql_command']) {
+            echo '<div class="psql-install-help">';
+            echo '<p><strong>To enable PostgreSQL installation:</strong></p>';
+            echo '<ol>';
+            echo '<li>Install PostgreSQL client on your server:</li>';
+            echo '<ul style="margin-left: 20px;">';
+            echo '<li><strong>Ubuntu/Debian:</strong> <code>sudo apt-get install postgresql-client</code></li>';
+            echo '<li><strong>CentOS/RHEL:</strong> <code>sudo yum install postgresql</code></li>';
+            echo '<li><strong>Alpine:</strong> <code>apk add postgresql-client</code></li>';
+            echo '</ul>';
+            echo '<li>Configure PostgreSQL connection string above</li>';
+            echo '<li>Refresh this page</li>';
+            echo '</ol>';
+            echo '</div>';
+        }
+
+        if (!$status['requirements']['connection_string']) {
+            echo '<p><strong>Missing:</strong> Configure your PostgreSQL connection string in the field above.</p>';
+        }
+
+        echo '</div>';
+        echo '</div>'; // close postgres-unavailable
+    }
+
+    /**
+     * Render manual installation option
+     */
+    private function render_manual_installation_option() {
+        echo '<div class="installation-option manual-option">';
+        echo '<h3>📝 Manual Installation</h3>';
+        echo '<p>Copy the SQL and run it manually in Supabase SQL Editor - always available as fallback.</p>';
+
+        echo '<div class="manual-benefits">';
+        echo '<ul>';
+        echo '<li>✅ <strong>Always works</strong> - No server requirements</li>';
+        echo '<li>✅ <strong>Full control</strong> - See exactly what gets executed</li>';
+        echo '<li>✅ <strong>Educational</strong> - Learn the database structure</li>';
+        echo '<li>✅ <strong>Universal</strong> - Works on any hosting environment</li>';
+        echo '</ul>';
+        echo '</div>';
+
+        echo '<details>';
+        echo '<summary class="manual-toggle"><strong>Show Manual Installation</strong></summary>';
+        echo '<div class="manual-content" style="margin-top: 15px;">';
+
+        $this->render_manual_installation_steps();
+
+        echo '</div>';
+        echo '</details>';
+
+        echo '</div>'; // close manual-option
+    }
+
+    /**
+     * Render manual installation steps
+     */
+    private function render_manual_installation_steps() {
+        echo '<div class="manual-steps">';
+        echo '<h4>📋 Manual Installation Steps:</h4>';
+        echo '<ol>';
+        echo '<li>Open your Supabase project → <strong>SQL Editor</strong> → <strong>New query</strong></li>';
+        echo '<li>Click "Copy SQL" below and paste it into the editor</li>';
+        echo '<li>Press <strong>RUN</strong> and wait for success</li>';
+        echo '<li>✅ Safe to re-run: Uses CREATE OR REPLACE and IF NOT EXISTS</li>';
+        echo '</ol>';
+        echo '</div>';
+
+        $sql_content = $this->get_sql_content();
+        if ($sql_content) {
+            echo '<p style="margin: 20px 0;">';
+            echo '<button class="button button-secondary" id="copy-manual-sql-btn">';
+            echo '<span class="dashicons dashicons-clipboard" style="margin-right: 5px;"></span>';
+            echo 'Copy SQL for Manual Installation';
+            echo '</button>';
+            echo '</p>';
+
+            echo '<textarea id="manual-sql-content" rows="12" style="width:100%; font-family:Consolas,Monaco,monospace; font-size:12px; border:2px solid #ddd; background:#f9f9f9;" readonly>' .
+                esc_textarea($sql_content) . '</textarea>';
+            echo '<p id="manual-copy-status" style="display:none; margin-top: 10px;"></p>';
+        } else {
+            echo '<div class="notice notice-error inline">';
+            echo '<p><strong>❌ SQL file not found</strong></p>';
+            echo '<p>Expected location: <code>' . AIVESESE_PLUGIN_PATH . 'supabase.sql</code></p>';
+            echo '</div>';
+        }
+    }
+
+    /**
+     * Add PostgreSQL installation JavaScript
+     */
+    private function add_postgres_installation_scripts() {
+        ?>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const installBtn = document.getElementById('postgres-install-btn');
+            const reinstallBtn = document.getElementById('postgres-reinstall-btn');
+            const checkStatusBtn = document.getElementById('postgres-check-status-btn');
+            const progressDiv = document.getElementById('postgres-installation-progress');
+            const progressFill = document.querySelector('#postgres-installation-progress .progress-fill');
+            const progressText = document.querySelector('#postgres-installation-progress .progress-text');
+            const resultDiv = document.getElementById('postgres-installation-result');
+            const copyManualBtn = document.getElementById('copy-manual-sql-btn');
+
+            // PostgreSQL Installation Handler
+            function handlePostgresInstallation(isReinstall = false) {
+                const btn = isReinstall ? reinstallBtn : installBtn;
+                if (!btn) return;
+
+                const originalHTML = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="dashicons dashicons-update spin"></span> ' + (isReinstall ? 'Updating...' : 'Installing...');
+
+                // Show progress
+                if (progressDiv) {
+                    progressDiv.style.display = 'block';
+                    if (progressFill) progressFill.style.width = '20%';
+                    if (progressText) progressText.textContent = 'Connecting to PostgreSQL database...';
+                }
+
+                if (resultDiv) {
+                    resultDiv.innerHTML = '<div class="notice notice-info"><p>🔄 Installing schema via PostgreSQL connection...</p></div>';
+                }
+
+                // Progress simulation
+                let progress = 20;
+                const progressInterval = setInterval(() => {
+                    if (progress < 90) {
+                        progress += Math.random() * 15;
+                        if (progressFill) progressFill.style.width = Math.min(progress, 90) + '%';
+
+                        if (progress > 40 && progress < 60 && progressText) {
+                            progressText.textContent = 'Executing SQL schema...';
+                        } else if (progress > 60 && progress < 80 && progressText) {
+                            progressText.textContent = 'Creating functions and triggers...';
+                        }
+                    }
+                }, 800);
+
+                fetch(ajaxurl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'aivesese_postgres_install_schema',
+                        nonce: '<?php echo wp_create_nonce('aivesese_postgres_install_nonce'); ?>'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    clearInterval(progressInterval);
+
+                    if (progressFill) {
+                        progressFill.style.width = '100%';
+                        progressFill.style.background = data.success ? '#46b450' : '#dc3232';
+                    }
+
+                    if (progressText) {
+                        progressText.textContent = data.success ? 'Installation completed!' : 'Installation failed';
+                    }
+
+                    if (data.success) {
+                        handleSuccessfulInstallation(data.data);
+                    } else {
+                        handleFailedInstallation(data.data);
+                    }
+                })
+                .catch(error => {
+                    clearInterval(progressInterval);
+                    handleInstallationError(error);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+
+                    setTimeout(() => {
+                        if (progressDiv) progressDiv.style.display = 'none';
+                    }, 5000);
+                });
+            }
+
+            // Success handler
+            function handleSuccessfulInstallation(data) {
+                if (!resultDiv) return;
+
+                let message = '<div class="notice notice-success">';
+                message += '<h4>✅ ' + data.message + '</h4>';
+
+                if (data.details && data.details.stdout) {
+                    message += '<details style="margin: 15px 0;"><summary><strong>Installation Details</strong></summary>';
+                    message += '<pre style="background: #f9f9f9; padding: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto;">';
+                    message += data.details.stdout;
+                    message += '</pre></details>';
+                }
+
+                message += '<div style="margin: 15px 0; padding: 15px; background: #e8f4fd; border-left: 4px solid #0073aa; border-radius: 0 4px 4px 0;">';
+                message += '<h4>🎉 Next Steps:</h4>';
+                message += '<ol>';
+                message += '<li>✅ Database schema is ready</li>';
+                message += '<li>📦 <a href="<?php echo admin_url('options-general.php?page=aivesese-sync'); ?>">Sync your products</a></li>';
+                message += '<li>🔍 Test search functionality on your store</li>';
+                message += '</ol>';
+                message += '</div>';
+
+                message += '</div>';
+                resultDiv.innerHTML = message;
+
+                // Refresh page after delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 8000);
+            }
+
+            // Error handler
+            function handleFailedInstallation(data) {
+                if (!resultDiv) return;
+
+                let message = '<div class="notice notice-error">';
+                message += '<h4>❌ Installation Failed</h4>';
+                message += '<p><strong>Error:</strong> ' + data.message + '</p>';
+
+                if (data.details) {
+                    if (data.details.errors && data.details.errors.length > 0) {
+                        message += '<details style="margin: 15px 0;"><summary><strong>Error Details</strong></summary>';
+                        message += '<div style="background: #fef2f2; padding: 10px; border-radius: 4px; margin: 10px 0;">';
+                        data.details.errors.forEach(error => {
+                            message += '<div style="color: #dc3232; margin: 5px 0;">' + error + '</div>';
+                        });
+                        message += '</div></details>';
+                    }
+
+                    if (data.details.suggestions && data.details.suggestions.length > 0) {
+                        message += '<div style="margin: 15px 0; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 0 4px 4px 0;">';
+                        message += '<h4>💡 Suggestions:</h4>';
+                        message += '<ul>';
+                        data.details.suggestions.forEach(suggestion => {
+                            message += '<li>' + suggestion + '</li>';
+                        });
+                        message += '</ul>';
+                        message += '</div>';
+                    }
+                }
+
+                message += '<div style="margin: 15px 0; padding: 15px; background: #f9f9f9; border-radius: 4px;">';
+                message += '<h4>🛠️ What to do:</h4>';
+                message += '<ol>';
+                message += '<li>Check the error details above for specific issues</li>';
+                message += '<li>Verify your PostgreSQL connection string is correct</li>';
+                message += '<li>Try the manual installation method below</li>';
+                message += '<li>Contact support if issues persist</li>';
+                message += '</ol>';
+                message += '</div>';
+
+                message += '</div>';
+                resultDiv.innerHTML = message;
+            }
+
+            // Network error handler
+            function handleInstallationError(error) {
+                if (!resultDiv) return;
+
+                resultDiv.innerHTML = '<div class="notice notice-error">' +
+                    '<h4>❌ Connection Error</h4>' +
+                    '<p>Unable to communicate with the installation service.</p>' +
+                    '<p><strong>Error:</strong> ' + error.message + '</p>' +
+                    '<p><strong>Try:</strong> Refresh the page and try again, or use manual installation.</p>' +
+                    '</div>';
+            }
+
+            // Status check handler
+            function handleStatusCheck() {
+                const btn = checkStatusBtn;
+                const originalHTML = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="dashicons dashicons-update spin"></span> Checking...';
+
+                fetch(ajaxurl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'aivesese_postgres_check_status',
+                        nonce: '<?php echo wp_create_nonce('aivesese_postgres_status_nonce'); ?>'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayStatusResults(data.data);
+                    } else {
+                        if (resultDiv) {
+                            resultDiv.innerHTML = '<div class="notice notice-error"><p>Status check failed: ' + data.data.message + '</p></div>';
+                        }
+                    }
+                })
+                .catch(error => {
+                    if (resultDiv) {
+                        resultDiv.innerHTML = '<div class="notice notice-error"><p>Status check failed: ' + error.message + '</p></div>';
+                    }
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                });
+            }
+
+            // Display status results
+            function displayStatusResults(status) {
+                if (!resultDiv) return;
+
+                let message = '<div class="notice notice-info">';
+                message += '<h4>📊 PostgreSQL Installation Status</h4>';
+
+                message += '<div style="margin: 15px 0;">';
+                message += '<p><strong>Installation Ready:</strong> ' + (status.can_run ? '✅ Yes' : '❌ No') + '</p>';
+
+                message += '<h4>Requirements Check:</h4>';
+                message += '<ul style="margin-left: 20px;">';
+                Object.entries(status.requirements).forEach(([req, met]) => {
+                    const icon = met ? '✅' : '❌';
+                    const name = req.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    message += '<li>' + icon + ' ' + name + '</li>';
+                });
+                message += '</ul>';
+                message += '</div>';
+
+                if (!status.can_run) {
+                    message += '<div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 15px 0;">';
+                    message += '<p><strong>💡 To enable PostgreSQL installation:</strong></p>';
+
+                    if (!status.requirements.psql_command) {
+                        message += '<p>Install PostgreSQL client on your server</p>';
+                    }
+                    if (!status.requirements.connection_string) {
+                        message += '<p>Configure PostgreSQL connection string above</p>';
+                    }
+                    if (!status.requirements.sql_file) {
+                        message += '<p>Ensure supabase.sql file exists in plugin directory</p>';
+                    }
+
+                    message += '</div>';
+                }
+
+                message += '</div>';
+                resultDiv.innerHTML = message;
+            }
+
+            // Manual SQL copy handler
+            function handleManualCopy() {
+                const textarea = document.getElementById('manual-sql-content');
+                const statusEl = document.getElementById('manual-copy-status');
+
+                if (!textarea || !statusEl) return;
+
+                navigator.clipboard.writeText(textarea.value).then(() => {
+                    statusEl.innerHTML = '<div style="color: #00a32a; background: #f0f9ff; padding: 10px; border-radius: 4px;">' +
+                        '✅ SQL copied to clipboard! Paste it in Supabase → SQL Editor and run it.</div>';
+                    statusEl.style.display = 'block';
+                }).catch(() => {
+                    // Fallback
+                    textarea.select();
+                    document.execCommand('copy');
+                    statusEl.innerHTML = '<div style="color: #00a32a; background: #f0f9ff; padding: 10px; border-radius: 4px;">' +
+                        '✅ SQL copied to clipboard! Paste it in Supabase → SQL Editor and run it.</div>';
+                    statusEl.style.display = 'block';
+                });
+
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 8000);
+            }
+
+            // Event listeners
+            if (installBtn) {
+                installBtn.addEventListener('click', () => handlePostgresInstallation(false));
+            }
+
+            if (reinstallBtn) {
+                reinstallBtn.addEventListener('click', () => handlePostgresInstallation(true));
+            }
+
+            if (checkStatusBtn) {
+                checkStatusBtn.addEventListener('click', handleStatusCheck);
+            }
+
+            if (copyManualBtn) {
+                copyManualBtn.addEventListener('click', handleManualCopy);
+            }
+
+            // Add spin animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                .spin {
+                    animation: spin 1s linear infinite;
+                    display: inline-block;
+                }
+            `;
+            document.head.appendChild(style);
+        });
+        </script>
+
+        <style>
+        .aivesese-schema-section {
+            margin: 20px 0;
+        }
+
+        .installation-options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .installation-option {
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            padding: 25px;
+            background: #fff;
+            transition: all 0.3s ease;
+        }
+
+        .installation-option:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .postgres-option {
+            border-color: #0073aa;
+            background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%);
+        }
+
+        .postgres-unavailable {
+            border-color: #ffc107;
+            background: #fffbf0;
+        }
+
+        .manual-option {
+            border-color: #666;
+            background: #f9f9f9;
+        }
+
+        .installation-option h3 {
+            margin-top: 0;
+            color: #23282d;
+            font-size: 20px;
+        }
+
+        .postgres-benefits ul,
+        .manual-benefits ul {
+            background: rgba(255,255,255,0.8);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .postgres-benefits li,
+        .manual-benefits li {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .postgres-action {
+            text-align: center;
+            margin: 25px 0;
+        }
+
+        .button-large {
+            font-size: 16px;
+            padding: 12px 24px;
+            height: auto;
+        }
+
+        .requirements-check ul {
+            background: rgba(255,255,255,0.8);
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+
+        .psql-install-help {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .manual-toggle {
+            cursor: pointer;
+            padding: 12px 16px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            display: block;
+            margin: 15px 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .manual-toggle:hover {
+            background: #e0e0e0;
+        }
+
+        .manual-content {
+            border-left: 4px solid #666;
+            padding-left: 20px;
+            margin: 20px 0;
+        }
+
+        .manual-steps {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        #postgres-installation-progress .progress-bar {
+            background: #f0f0f0;
+            height: 24px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+        }
+
+        #postgres-installation-progress .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #0073aa 25%, transparent 25%, transparent 50%, #0073aa 50%, #0073aa 75%, transparent 75%);
+            background-size: 20px 20px;
+            animation: progress-stripes 1s linear infinite;
+            transition: width 0.3s ease;
+        }
+
+        @keyframes progress-stripes {
+            0% { background-position: 0 0; }
+            100% { background-position: 20px 0; }
+        }
+
+        #postgres-installation-progress .progress-text {
+            font-style: italic;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+        }
+        </style>
+        <?php
+    }
+
+    /**
+     * Validate Supabase connection configuration
+     */
+    private function validate_supabase_connection(): bool {
+        $url = trim(get_option('aivesese_url', ''));
+        $key = trim(get_option('aivesese_key', ''));
+        $store_id = trim(get_option('aivesese_store', ''));
+
+        return !empty($url) && !empty($key) && !empty($store_id);
     }
 }

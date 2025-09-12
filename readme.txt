@@ -4,7 +4,7 @@ Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable Tag: 0.16.4
+Stable Tag: 0.16.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -181,7 +181,19 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Changelog ==
 
-= 0.16.4 (Latest) =
+= 0.16.5 (Latest) =
+* **New:** WP-CLI schema installation commands for reliable database setup
+* **New:** Direct PostgreSQL connection support with encrypted credential storage
+* **New:** Three-tier installation system: Manual copy/paste, WP-CLI commands, and Admin interface buttons
+* **New:** Migration Runner architecture for transactional database operations with rollback support
+* **New:** Real-time installation progress feedback in admin interface
+* **Update:** Enhanced admin interface with PostgreSQL connection configuration field
+* **Update:** Improved security with encrypted PostgreSQL connection string storage
+* **Update:** Better user experience with step-by-step setup guidance
+* **Update:** Enhanced status checking with detailed environment diagnostics
+* **Fix:** Improved error messages and troubleshooting guidance for failed installations
+
+= 0.16.4 =
 * **New:** Custom SQL upsert function for reliable product synchronization
 * **Fix:** Product sync failures due to Row Level Security (RLS) policy conflicts
 * **Fix:** Auto-sync triggering duplicate requests due to WooCommerce hook behavior
@@ -264,7 +276,19 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Upgrade Notice ==
 
-= 0.16.4 (Latest) =
+= 0.16.5 (Latest) =
+* **New:** WP-CLI schema installation commands for reliable database setup
+* **New:** Direct PostgreSQL connection support with encrypted credential storage
+* **New:** Three-tier installation system: Manual copy/paste, WP-CLI commands, and Admin interface buttons
+* **New:** Migration Runner architecture for transactional database operations with rollback support
+* **New:** Real-time installation progress feedback in admin interface
+* **Update:** Enhanced admin interface with PostgreSQL connection configuration field
+* **Update:** Improved security with encrypted PostgreSQL connection string storage
+* **Update:** Better user experience with step-by-step setup guidance
+* **Update:** Enhanced status checking with detailed environment diagnostics
+* **Fix:** Improved error messages and troubleshooting guidance for failed installations
+
+= 0.16.4 =
 * **New:** Custom SQL upsert function for reliable product synchronization
 * **Fix:** Product sync failures due to Row Level Security (RLS) policy conflicts
 * **Fix:** Auto-sync triggering duplicate requests due to WooCommerce hook behavior

@@ -245,33 +245,6 @@ ON products FOR SELECT
 TO public
 USING (status = 'publish');
 
-/* Views inherit RLS from base table. */
-
-/* ──────────────────────────────────────────────────────────────
-   7. HELPFUL VIEWS FOR ANALYTICS
-   ────────────────────────────────────────────────────────────── */
-
--- Product performance view
-create or replace view product_analytics as
-select
-  store_id,
-  woocommerce_id,
-  name,
-  brand,
-  categories[1] as primary_category,
-  regular_price,
-  margin,
-  sold_count,
-  average_rating,
-  review_count,
-  stock_status,
-  case
-    when embedding is not null then 'yes'
-    else 'no'
-  end as has_embedding
-from products
-where status = 'publish';
-
 CREATE OR REPLACE FUNCTION fts_search(
     search_store_id uuid,
     search_term text,
