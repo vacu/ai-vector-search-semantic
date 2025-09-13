@@ -4,7 +4,7 @@ Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable Tag: 0.16.5.1
+Stable Tag: 0.17.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -191,7 +191,18 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Changelog ==
 
-= 0.16.5.1 (Latest) =
+= 0.17.0 (Latest) =
+**Major Architectural Improvements:**
+* **New:** Modular asset structure with separate CSS, JS, and template files
+* **New:** Template system for better customization
+* **New:** Optimized admin interface loading with conditional asset enqueueing
+* **Update:** Refactored admin interface for better performance and maintainability
+* **Update:** Enhanced error handling and user feedback systems
+* **Update:** Improved code organization following WordPress best practices
+* **Fix:** Better asset loading prevents conflicts with other plugins
+* **Dev:** Easier customization and theming capabilities for developers
+
+= 0.16.5.1 =
 * **Update:** Updated readme with screenshots
 
 = 0.16.5 =
@@ -289,7 +300,18 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Upgrade Notice ==
 
-= 0.16.5.1 (Latest) =
+= 0.17.0 (Latest) =
+**Major Architectural Improvements:**
+* **New:** Modular asset structure with separate CSS, JS, and template files
+* **New:** Template system for better customization
+* **New:** Optimized admin interface loading with conditional asset enqueueing
+* **Update:** Refactored admin interface for better performance and maintainability
+* **Update:** Enhanced error handling and user feedback systems
+* **Update:** Improved code organization following WordPress best practices
+* **Fix:** Better asset loading prevents conflicts with other plugins
+* **Dev:** Easier customization and theming capabilities for developers
+
+= 0.16.5.1 =
 * **Update:** Updated readme with screenshots
 
 = 0.16.5 =
