@@ -1,0 +1,929 @@
+/**
+ * PostgreSQL Installation CSS
+ * File: assets/css/postgres-installation.css
+ */
+
+/* ==========================================================================
+   Schema Section Container
+   ========================================================================== */
+
+.aivesese-schema-section {
+    margin: 30px 0;
+    background: #f8f9fa;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.aivesese-schema-section > h2 {
+    margin: 0;
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #0073aa 0%, #005a8a 100%);
+    color: white;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   Installation Options Grid
+   ========================================================================== */
+
+.installation-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 25px;
+}
+
+.installation-option {
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 25px;
+    background: #fff;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.installation-option:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.installation-option h3 {
+    margin-top: 0;
+    color: #1d2327;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.installation-option p {
+    color: #646970;
+    margin: 10px 0 20px 0;
+    line-height: 1.6;
+}
+
+/* PostgreSQL Option (Recommended) */
+.postgres-option {
+    border-color: #0073aa;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%);
+}
+
+.postgres-option h3 {
+    color: #0073aa;
+}
+
+.postgres-option::before {
+    content: "RECOMMENDED";
+    position: absolute;
+    top: -1px;
+    right: 20px;
+    background: #0073aa;
+    color: white;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-radius: 0 0 6px 6px;
+}
+
+/* PostgreSQL Unavailable */
+.postgres-unavailable {
+    border-color: #ffc107;
+    background: #fffbf0;
+    opacity: 0.8;
+}
+
+.postgres-unavailable h3 {
+    color: #b8860b;
+}
+
+/* Manual Option */
+.manual-option {
+    border-color: #6c757d;
+    background: #f8f9fa;
+}
+
+.manual-option h3 {
+    color: #495057;
+}
+
+/* ==========================================================================
+   Benefits Lists
+   ========================================================================== */
+
+.postgres-benefits ul,
+.manual-benefits ul {
+    background: rgba(255,255,255,0.8);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    list-style: none;
+    backdrop-filter: blur(10px);
+}
+
+.postgres-benefits li,
+.manual-benefits li {
+    margin: 8px 0;
+    font-size: 14px;
+    padding-left: 25px;
+    position: relative;
+    line-height: 1.5;
+}
+
+.postgres-benefits li::before {
+    content: "✅";
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.manual-benefits li::before {
+    content: "✅";
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* ==========================================================================
+   PostgreSQL Action Button
+   ========================================================================== */
+
+.postgres-action {
+    text-align: center;
+    margin: 25px 0;
+}
+
+.postgres-action .button-large {
+    font-size: 16px;
+    padding: 12px 24px;
+    height: auto;
+    background: linear-gradient(135deg, #0073aa 0%, #005a8a 100%);
+    border-color: #005a8a;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.postgres-action .button-large:hover {
+    background: linear-gradient(135deg, #005a8a 0%, #004a7a 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.postgres-action .button-large .dashicons {
+    margin-right: 8px;
+    vertical-align: middle;
+    font-size: 18px;
+}
+
+/* ==========================================================================
+   Installation Progress
+   ========================================================================== */
+
+#postgres-installation-progress {
+    background: rgba(255,255,255,0.9);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #e1e5e9;
+}
+
+.progress-bar {
+    background: #f0f0f0;
+    height: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 15px 0;
+    border: 1px solid #ddd;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(45deg, #0073aa 25%, transparent 25%, transparent 50%, #0073aa 50%, #0073aa 75%, transparent 75%);
+    background-size: 20px 20px;
+    animation: progress-stripes 1s linear infinite;
+    transition: width 0.3s ease;
+    border-radius: 12px;
+}
+
+@keyframes progress-stripes {
+    0% { background-position: 0 0; }
+    100% { background-position: 20px 0; }
+}
+
+.progress-text {
+    font-style: italic;
+    color: #646970;
+    text-align: center;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+/* ==========================================================================
+   Installation Results
+   ========================================================================== */
+
+#postgres-installation-result .notice {
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+}
+
+#postgres-installation-result .notice h4 {
+    margin-top: 0;
+    font-size: 18px;
+}
+
+#postgres-installation-result details {
+    margin: 15px 0;
+    background: rgba(255,255,255,0.5);
+    border-radius: 6px;
+    padding: 10px;
+}
+
+#postgres-installation-result summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 5px 0;
+}
+
+#postgres-installation-result pre {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 4px;
+    font-size: 12px;
+    overflow-x: auto;
+    border: 1px solid #e1e5e9;
+    margin: 10px 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* ==========================================================================
+   Requirements Check
+   ========================================================================== */
+
+.requirements-check ul {
+    background: rgba(255,255,255,0.8);
+    padding: 15px 20px;
+    border-radius: 6px;
+    margin: 15px 0;
+    list-style: none;
+}
+
+.requirements-check li {
+    margin: 8px 0;
+    padding-left: 25px;
+    position: relative;
+    font-size: 14px;
+}
+
+.requirements-check li::before {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 16px;
+}
+
+/* ==========================================================================
+   PostgreSQL Help Section
+   ========================================================================== */
+
+.psql-install-help {
+    background: #e8f4fd;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border-left: 4px solid #0073aa;
+}
+
+.psql-install-help h4 {
+    margin-top: 0;
+    color: #0073aa;
+}
+
+.psql-install-help code {
+    background: #1e293b;
+    color: #10b981;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.psql-install-help ul {
+    margin-left: 20px;
+    margin-top: 10px;
+}
+
+.psql-install-help li {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+/* ==========================================================================
+   Manual Installation Section
+   ========================================================================== */
+
+.manual-toggle {
+    cursor: pointer;
+    padding: 12px 16px;
+    background: #f0f0f0;
+    border-radius: 6px;
+    display: block;
+    margin: 15px 0;
+    transition: background-color 0.3s ease;
+    font-weight: 600;
+    border: 1px solid #ddd;
+}
+
+.manual-toggle:hover {
+    background: #e8e8e8;
+}
+
+.manual-content {
+    border-left: 4px solid #6c757d;
+    padding-left: 20px;
+    margin: 20px 0;
+}
+
+.manual-steps {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 15px 0;
+    border: 1px solid #e1e5e9;
+}
+
+.manual-steps h4 {
+    margin-top: 0;
+    color: #495057;
+}
+
+.manual-steps ol {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.manual-steps li {
+    margin: 8px 0;
+    line-height: 1.6;
+}
+
+/* ==========================================================================
+   PostgreSQL Connection Field
+   ========================================================================== */
+
+.postgres-connection-field {
+    max-width: 800px;
+    margin: 20px 0;
+}
+
+.connection-status {
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 4px solid #46b450;
+    background: #f0f9ff;
+    margin-bottom: 15px;
+}
+
+.connection-status .dashicons {
+    color: #46b450;
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+.connection-status strong {
+    display: block;
+    color: #1d2327;
+    margin-bottom: 5px;
+}
+
+.connection-status p {
+    margin: 8px 0;
+    color: #646970;
+}
+
+.postgres-connection-help {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 15px;
+    border: 1px solid #e1e5e9;
+}
+
+.postgres-connection-help h4 {
+    margin-top: 0;
+    color: #0073aa;
+}
+
+.postgres-connection-help ol {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.postgres-connection-help li {
+    margin: 8px 0;
+    line-height: 1.5;
+}
+
+.connection-string-examples {
+    background: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    border-left: 3px solid #0073aa;
+}
+
+.connection-string-examples p {
+    margin: 0 0 10px 0;
+    font-weight: 600;
+}
+
+.connection-string-examples code {
+    display: block;
+    word-break: break-all;
+    font-size: 12px;
+    color: #d63638;
+    background: #f6f7f7;
+    padding: 8px;
+    border-radius: 4px;
+    font-family: Consolas, Monaco, monospace;
+}
+
+.security-note {
+    background: #fff3cd;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+    border-left: 3px solid #ffc107;
+}
+
+.security-note p {
+    margin: 0;
+    color: #856404;
+    font-size: 14px;
+}
+
+/* ==========================================================================
+   WP-CLI Information Section
+   ========================================================================== */
+
+.wp-cli-info {
+    background: #e8f4fd;
+    padding: 20px;
+    border-radius: 6px;
+    margin-top: 20px;
+    border-left: 4px solid #0073aa;
+}
+
+.wp-cli-info h4 {
+    margin-top: 0;
+    color: #0073aa;
+    font-size: 18px;
+}
+
+.wp-cli-info p {
+    margin: 10px 0;
+    color: #1d2327;
+}
+
+.cli-command-box {
+    background: #23282d;
+    color: #f1f1f1;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border: 1px solid #32373c;
+}
+
+.cli-command-box code {
+    background: none;
+    color: #46b450;
+    font-size: 16px;
+    flex: 1;
+    font-weight: bold;
+    font-family: Consolas, Monaco, monospace;
+}
+
+.cli-command-box .button {
+    background: #0073aa;
+    border-color: #005a8a;
+    color: white;
+    font-size: 12px;
+    padding: 6px 12px;
+    height: auto;
+}
+
+.cli-command-box .button:hover {
+    background: #005a8a;
+}
+
+.wp-cli-info ul {
+    background: rgba(255,255,255,0.7);
+    padding: 15px 20px;
+    border-radius: 4px;
+    margin: 15px 0;
+}
+
+.wp-cli-info li {
+    margin: 8px 0;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    color: #1d2327;
+}
+
+.wp-cli-info em {
+    color: #646970;
+    font-style: italic;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ==========================================================================
+   Manual SQL Section
+   ========================================================================== */
+
+#manual-sql-content {
+    width: 100%;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    border: 2px solid #ddd;
+    background: #f9f9f9;
+    border-radius: 4px;
+    resize: vertical;
+    min-height: 300px;
+    line-height: 1.4;
+    color: #1d2327;
+}
+
+#manual-sql-content:focus {
+    border-color: #0073aa;
+    box-shadow: 0 0 0 1px #0073aa;
+    outline: none;
+}
+
+#copy-manual-sql-btn {
+    margin: 20px 0;
+}
+
+#copy-manual-sql-btn .dashicons {
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+#manual-copy-status {
+    margin-top: 10px;
+}
+
+/* ==========================================================================
+   Status Check Results
+   ========================================================================== */
+
+.status-check-results {
+    background: #fff;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.status-check-results h4 {
+    margin-top: 0;
+    color: #1d2327;
+}
+
+.status-check-results ul {
+    margin-left: 20px;
+}
+
+.status-check-results li {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.status-good::before { content: "✅"; margin-right: 8px; }
+.status-bad::before { content: "❌"; margin-right: 8px; }
+.status-warning::before { content: "⚠️"; margin-right: 8px; }
+
+/* ==========================================================================
+   Copy Status Messages
+   ========================================================================== */
+
+.copy-status {
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+.copy-status.success {
+    color: #00a32a;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+}
+
+.copy-status.error {
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+/* ==========================================================================
+   Troubleshooting Section
+   ========================================================================== */
+
+.troubleshooting-section {
+    background: #f9f9f9;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 15px 0;
+    border-left: 4px solid #ffb900;
+}
+
+.troubleshooting-section h4 {
+    margin-top: 0;
+    color: #856404;
+}
+
+.troubleshooting-section ol {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.troubleshooting-section li {
+    margin: 8px 0;
+    line-height: 1.5;
+}
+
+/* ==========================================================================
+   Installation Status Indicators
+   ========================================================================== */
+
+.installation-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.installation-status.ready {
+    background: #ecfdf5;
+    color: #00a32a;
+    border: 1px solid #a7f3d0;
+}
+
+.installation-status.not-ready {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.installation-status.partial {
+    background: #fffbf0;
+    color: #f59e0b;
+    border: 1px solid #fed7aa;
+}
+
+/* ==========================================================================
+   Error Details Expansion
+   ========================================================================== */
+
+.error-details {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    margin: 15px 0;
+    overflow: hidden;
+}
+
+.error-details summary {
+    background: #fee2e2;
+    padding: 12px 15px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #7f1d1d;
+    border-bottom: 1px solid #fecaca;
+}
+
+.error-details summary:hover {
+    background: #fca5a5;
+}
+
+.error-details div {
+    padding: 15px;
+}
+
+.error-details .error-item {
+    color: #dc2626;
+    margin: 5px 0;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    background: rgba(255,255,255,0.5);
+    padding: 8px;
+    border-radius: 4px;
+}
+
+/* ==========================================================================
+   Success Details Expansion
+   ========================================================================== */
+
+.success-details {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 6px;
+    margin: 15px 0;
+    overflow: hidden;
+}
+
+.success-details summary {
+    background: #d1fae5;
+    padding: 12px 15px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #064e3b;
+    border-bottom: 1px solid #a7f3d0;
+}
+
+.success-details summary:hover {
+    background: #a7f3d0;
+}
+
+.success-details pre {
+    background: rgba(255,255,255,0.8);
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+    font-size: 12px;
+    overflow-x: auto;
+    border: 1px solid #a7f3d0;
+    color: #064e3b;
+}
+
+/* ==========================================================================
+   Next Steps Section
+   ========================================================================== */
+
+.next-steps {
+    background: #e8f4fd;
+    border-left: 4px solid #0073aa;
+    border-radius: 0 4px 4px 0;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.next-steps h4 {
+    margin-top: 0;
+    color: #0073aa;
+}
+
+.next-steps ol {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.next-steps li {
+    margin: 8px 0;
+    line-height: 1.5;
+}
+
+.next-steps a {
+    color: #0073aa;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.next-steps a:hover {
+    color: #005a8a;
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .installation-options {
+        padding: 15px;
+        gap: 20px;
+    }
+
+    .installation-option {
+        padding: 20px;
+    }
+
+    .postgres-connection-field {
+        max-width: 100%;
+    }
+
+    .cli-command-box {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .cli-command-box code {
+        text-align: center;
+        font-size: 14px;
+    }
+
+    .progress-bar {
+        height: 20px;
+    }
+
+    .aivesese-schema-section > h2 {
+        padding: 15px 20px;
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 600px) {
+    .postgres-action .button-large {
+        font-size: 14px;
+        padding: 10px 20px;
+    }
+
+    .manual-steps {
+        padding: 15px;
+    }
+
+    .wp-cli-info {
+        padding: 15px;
+    }
+
+    #manual-sql-content {
+        font-size: 11px;
+        min-height: 250px;
+    }
+
+    .connection-string-examples code {
+        font-size: 10px;
+    }
+}
+
+/* ==========================================================================
+   Loading Animation
+   ========================================================================== */
+
+.postgres-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #646970;
+}
+
+.postgres-loading .dashicons {
+    animation: postgres-spin 1s linear infinite;
+}
+
+@keyframes postgres-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Installation Mode Specific Styles
+   ========================================================================== */
+
+.installation-mode-postgres .manual-option {
+    opacity: 0.7;
+}
+
+.installation-mode-manual .postgres-option {
+    opacity: 0.7;
+}
+
+/* ==========================================================================
+   Dark Mode Support (Future Enhancement)
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+    .installation-option {
+        background: #1e1e1e;
+        border-color: #444;
+        color: #e1e1e1;
+    }
+
+    .postgres-option {
+        background: linear-gradient(135deg, #0a1a2a 0%, #1a2a3a 100%);
+    }
+
+    .cli-command-box {
+        background: #0d1117;
+        border-color: #21262d;
+    }
+
+    #manual-sql-content {
+        background: #0d1117;
+        color: #e1e1e1;
+        border-color: #21262d;
+    }
+}

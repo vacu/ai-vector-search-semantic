@@ -69,9 +69,17 @@ add_action('admin_notices', function() {
         return;
     }
 
-    // Show enhanced setup notice
+    // Handle dismissal early (before output) and persist
+    if (isset($_GET['aivesese_dismiss_cli_upgrade']) && check_admin_referer('aivesese_cli_upgrade_nonce')) {
+        update_option('aivesese_cli_upgrade_notice_dismissed', time());
+        wp_safe_redirect(remove_query_arg(['aivesese_dismiss_cli_upgrade', '_wpnonce']));
+        exit;
+    }
+
+    // Show enhanced setup notice (skip if dismissed)
     $current_version = get_option('aivesese_plugin_version');
-    if ($current_version && version_compare($current_version, '0.17.0', '<')) {
+    $dismissed = get_option('aivesese_cli_upgrade_notice_dismissed');
+    if (!$dismissed && $current_version && version_compare($current_version, '0.17.0', '<')) {
         $dismiss_url = wp_nonce_url(
             add_query_arg('aivesese_dismiss_cli_upgrade', '1'),
             'aivesese_cli_upgrade_nonce'
@@ -94,13 +102,6 @@ add_action('admin_notices', function() {
         echo '<a href="' . esc_url($dismiss_url) . '" class="button">Dismiss</a>';
         echo '</p>';
         echo '</div>';
-
-        // Handle dismissal
-        if (isset($_GET['aivesese_dismiss_cli_upgrade']) && check_admin_referer('aivesese_cli_upgrade_nonce')) {
-            update_option('aivesese_cli_upgrade_notice_dismissed', time());
-            wp_safe_redirect(remove_query_arg(['aivesese_dismiss_cli_upgrade', '_wpnonce']));
-            exit;
-        }
     }
 });
 

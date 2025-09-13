@@ -35,6 +35,8 @@ class AIVectorSearch_Admin_Interface {
         add_action('wp_ajax_aivesese_test_connection', [$this, 'handle_test_connection']);
         add_action('wp_ajax_aivesese_postgres_install_schema', [$this, 'handle_postgres_install_schema']);
         add_action('wp_ajax_aivesese_postgres_check_status', [$this, 'handle_postgres_check_status']);
+
+        $this->init_admin_body_classes();
     }
 
     /**
@@ -173,169 +175,24 @@ class AIVectorSearch_Admin_Interface {
     }
 
     public function render_connection_mode_field() {
-        $value = get_option('aivesese_connection_mode', 'self_hosted');
-        ?>
-        <div class="connection-mode-selector">
-            <label class="connection-option">
-                <input type="radio" name="aivesese_connection_mode" value="api" <?php checked($value, 'api'); ?>>
-                <div class="api-service-preview">
-                    <h5>🚀 Managed API Service (Coming Soon!)</h5>
-                    <p><em>We're working on a hosted service that will eliminate setup complexity.
-                    <!-- <a href="https://zzzsolutions.ro" target="_blank">Join our waitlist</a> to be notified when it's ready!</em></p> -->
-                </div>
-                <!-- <div class="option-card">
-                    <h4>🚀 Managed API Service</h4>
-                    <p>Use our hosted service with your license key. No setup required!</p>
-                    <ul>
-                        <li>✅ No database setup needed</li>
-                        <li>✅ Automatic updates and maintenance</li>
-                        <li>✅ Professional support included</li>
-                        <li>✅ Guaranteed uptime and performance</li>
-                    </ul>
-                    <small><strong>Starts at $29/month</strong></small>
-                </div> -->
-            </label>
-
-            <label class="connection-option">
-                <input type="radio" name="aivesese_connection_mode" value="self_hosted" <?php checked($value, 'self_hosted'); ?>>
-                <div class="option-card">
-                    <h4>⚙️ Self-Hosted (Bring Your Own Keys)</h4>
-                    <p>Use your own Supabase and OpenAI accounts. Full control!</p>
-                    <ul>
-                        <li>🔧 Requires Supabase project setup</li>
-                        <li>🔧 Manual SQL installation needed</li>
-                        <li>🔧 You manage infrastructure</li>
-                        <li>💰 Pay only for API usage</li>
-                    </ul>
-                    <small><strong>Free plugin + your API costs</strong></small>
-                </div>
-            </label>
-        </div>
-
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const radios = document.querySelectorAll('input[name="aivesese_connection_mode"]');
-            const toggleFields = function() {
-                const mode = document.querySelector('input[name="aivesese_connection_mode"]:checked').value;
-
-                // Toggle license key field
-                const licenseRow = document.querySelector('#aivesese_license_key').closest('tr');
-                if (licenseRow) {
-                    licenseRow.style.display = mode === 'api' ? 'table-row' : 'none';
-                }
-
-                // Toggle self-hosted fields
-                const selfHostedFields = ['aivesese_url', 'aivesese_key', 'aivesese_store', 'aivesese_openai'];
-                selfHostedFields.forEach(fieldId => {
-                    const field = document.getElementById(fieldId);
-                    if (field) {
-                        const row = field.closest('tr');
-                        if (row) {
-                            row.style.display = mode === 'self_hosted' ? 'table-row' : 'none';
-                        }
-                    }
-                });
-
-                // Show/hide help sections
-                const helpSections = document.querySelectorAll('.ai-supabase-help');
-                helpSections.forEach(section => {
-                    section.style.display = mode === 'self_hosted' ? 'block' : 'none';
-                });
-            };
-
-            radios.forEach(radio => radio.addEventListener('change', toggleFields));
-            setTimeout(toggleFields, 100); // Initial toggle with delay
-        });
-        </script>
-        <?php
+        // Use templated selector instead of inline HTML
+        $current_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $api_available = false; // Flip when API service is live
+        $this->load_template('connection-mode-selector', compact('current_mode', 'api_available'));
+        return;
     }
 
     public function render_license_key_field() {
-        $value = get_option('aivesese_license_key');
-        $is_activated = !empty($value) && get_option('aivesese_api_activated') === '1';
-        ?>
-        <div class="license-key-section">
-            <?php if ($is_activated): ?>
-                <div class="license-status activated">
-                    <span class="dashicons dashicons-yes-alt"></span>
-                    <strong>License Active</strong>
-                    <p>Your API service is connected and ready!</p>
-                    <button type="button" class="button" onclick="revokeLicense()">Change License</button>
-                </div>
-            <?php else: ?>
-                <input type="text"
-                       id="aivesese_license_key"
-                       name="aivesese_license_key"
-                       value="<?php echo esc_attr($value); ?>"
-                       class="regular-text"
-                       placeholder="Enter your license key from zzzsolutions.ro">
-
-                <button type="button"
-                        id="activate-license"
-                        class="button button-secondary"
-                        onclick="activateLicense()">
-                    Activate License
-                </button>
-
-                <div id="license-status" style="margin-top: 10px;"></div>
-
-                <p class="description">
-                    Don't have a license?
-                    <a href="https://zzzsolutions.ro/ai-search-service" target="_blank">Get one here</a>
-                </p>
-            <?php endif; ?>
-        </div>
-
-        <script>
-        function activateLicense() {
-            const key = document.getElementById('aivesese_license_key').value;
-            const button = document.getElementById('activate-license');
-            const status = document.getElementById('license-status');
-
-            if (!key) {
-                status.innerHTML = '<div class="license-error">Please enter a license key</div>';
-                return;
-            }
-
-            button.disabled = true;
-            button.textContent = 'Activating...';
-            status.innerHTML = '<div class="license-loading">🔄 Activating license...</div>';
-
-            fetch(ajaxurl, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: new URLSearchParams({
-                    action: 'aivesese_activate_license',
-                    license_key: key,
-                    nonce: '<?php echo wp_create_nonce('aivesese_license_nonce'); ?>'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    status.innerHTML = '<div class="license-success">✅ License activated successfully! Refreshing page...</div>';
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    status.innerHTML = '<div class="license-error">❌ ' + data.data.message + '</div>';
-                    button.disabled = false;
-                    button.textContent = 'Activate License';
-                }
-            })
-            .catch(error => {
-                status.innerHTML = '<div class="license-error">❌ Connection error. Please try again.</div>';
-                button.disabled = false;
-                button.textContent = 'Activate License';
-            });
+        // Use templated license activation instead of inline HTML
+        $license_key = get_option('aivesese_license_key');
+        $is_activated = !empty($license_key) && get_option('aivesese_api_activated') === '1';
+        $activation_data = [];
+        if ($is_activated && method_exists($this->api_client, 'get_status')) {
+            $status = $this->api_client->get_status();
+            if (is_array($status)) { $activation_data = $status; }
         }
-
-        function revokeLicense() {
-            if (confirm('Are you sure you want to deactivate your license? This will switch back to self-hosted mode.')) {
-                document.getElementById('aivesese_license_key').value = '';
-                document.querySelector('form').submit();
-            }
-        }
-        </script>
-        <?php
+        $this->load_template('license-activation', compact('license_key', 'is_activated', 'activation_data'));
+        return;
     }
 
     public function render_text_field($args) {
@@ -411,7 +268,7 @@ class AIVectorSearch_Admin_Interface {
     public function render_settings_page() {
         $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
 
-        echo '<div class="wrap">';
+        echo '<div class="wrap aivesese-admin aivesese-mode-' . esc_attr($connection_mode) . '">';
         echo '<h1>' . esc_html__('AI Vector Search Settings', 'ai-vector-search-semantic') . '</h1>';
 
         // Show different descriptions based on mode
@@ -433,202 +290,29 @@ class AIVectorSearch_Admin_Interface {
         echo '</form>';
 
         echo '</div>';
-
-        // Add styles
-        $this->add_admin_styles();
-    }
-
-    private function add_admin_styles() {
-        ?>
-        <style>
-            .api-service-preview {
-                background: rgba(255,255,255,0.7);
-                border: 1px dashed #666;
-                border-radius: 6px;
-                padding: 15px;
-                margin-top: 20px;
-            }
-            .api-service-preview h5 {
-                margin: 0 0 8px 0;
-                color: #666;
-            }
-            .api-service-preview p {
-                margin: 0;
-                color: #666;
-                font-style: italic;
-            }
-        .connection-mode-selector {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 20px 0;
-        }
-        .connection-option {
-            cursor: pointer;
-        }
-        .connection-option input[type="radio"] {
-            display: none;
-        }
-        .option-card {
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            transition: all 0.3s ease;
-            height: 100%;
-        }
-        .connection-option input[type="radio"]:checked + .option-card {
-            border-color: #0073aa;
-            background-color: #f0f8ff;
-        }
-        .option-card h4 {
-            margin-top: 0;
-            color: #0073aa;
-        }
-        .option-card ul {
-            list-style: none;
-            padding-left: 0;
-        }
-        .option-card li {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        .option-card small {
-            color: #666;
-            font-weight: bold;
-        }
-
-        /* License field styles */
-        .license-key-section {
-            max-width: 500px;
-        }
-        .license-status {
-            padding: 15px;
-            border-radius: 4px;
-            border-left: 4px solid;
-        }
-        .license-status.activated {
-            background: #f0f9ff;
-            border-left-color: #10b981;
-            color: #065f46;
-        }
-        .license-status .dashicons {
-            color: #10b981;
-            margin-right: 5px;
-        }
-        .license-loading {
-            color: #f59e0b;
-        }
-        .license-error {
-            color: #dc2626;
-            background: #fef2f2;
-            border-left-color: #dc2626;
-            padding: 10px;
-            margin-top: 10px;
-        }
-        .license-success {
-            color: #065f46;
-            background: #f0f9ff;
-            border-left-color: #10b981;
-            padding: 10px;
-            margin-top: 10px;
-        }
-        </style>
-        <?php
     }
 
     /**
-     * Add JavaScript for showing/hiding conditional fields
+     * Updated enqueue_admin_assets method - Now properly organized
      */
-    private function add_conditional_field_script() {
-        ?>
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const radios = document.querySelectorAll('input[name="aivesese_connection_mode"]');
+    public function enqueue_admin_assets($hook) {
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if (!in_array($page, ['aivesese', 'aivesese-status', 'aivesese-sync', 'aivesese-analytics'], true)) {
+            return;
+        }
 
-            function toggleFields() {
-                const mode = document.querySelector('input[name="aivesese_connection_mode"]:checked');
-                if (!mode) return;
+        // Enqueue styles first
+        $this->enqueue_admin_styles();
 
-                const selectedMode = mode.value;
-
-                // Show/hide API fields
-                const apiFields = document.querySelectorAll('.api-field');
-                apiFields.forEach(field => {
-                    field.style.display = selectedMode === 'api' ? 'table-row' : 'none';
-                });
-
-                // Show/hide self-hosted fields
-                const selfHostedFields = document.querySelectorAll('.self-hosted-field');
-                selfHostedFields.forEach(field => {
-                    field.style.display = selectedMode === 'self_hosted' ? 'table-row' : 'none';
-                });
-
-                // Show/hide help sections
-                const helpSections = document.querySelectorAll('.ai-supabase-help');
-                helpSections.forEach(section => {
-                    section.style.display = selectedMode === 'self_hosted' ? 'block' : 'none';
-                });
-            }
-
-            // Initial toggle
-            setTimeout(toggleFields, 100); // Small delay to ensure DOM is ready
-
-            // Toggle on change
-            radios.forEach(radio => {
-                radio.addEventListener('change', toggleFields);
-            });
-        });
-        </script>
-
-        <style>
-        .connection-mode-selector {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 20px 0;
-        }
-        .connection-option {
-            cursor: pointer;
-        }
-        .connection-option input[type="radio"] {
-            display: none;
-        }
-        .option-card {
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            transition: all 0.3s ease;
-            height: 100%;
-        }
-        .connection-option input[type="radio"]:checked + .option-card {
-            border-color: #0073aa;
-            background-color: #f0f8ff;
-        }
-        .option-card h4 {
-            margin-top: 0;
-            color: #0073aa;
-        }
-        .option-card ul {
-            list-style: none;
-            padding-left: 0;
-        }
-        .option-card li {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        .option-card small {
-            color: #666;
-            font-weight: bold;
-        }
-        </style>
-        <?php
+        // Then enqueue scripts (which depend on styles being loaded)
+        $this->enqueue_admin_scripts();
     }
 
     /**
      * Enhanced status page with API/self-hosted detection
      */
     public function render_status_page() {
-        echo '<div class="wrap">';
+        echo '<div class="wrap aivesese-admin">';
         echo '<h1>' . esc_html__('AI Vector Search Status', 'ai-vector-search-semantic') . '</h1>';
 
         $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
@@ -638,6 +322,9 @@ class AIVectorSearch_Admin_Interface {
         } else {
             $this->render_self_hosted_status();
         }
+
+        // Add status page footer action hook
+        do_action('aivesese_status_page_footer');
 
         echo '</div>';
     }
@@ -701,7 +388,7 @@ class AIVectorSearch_Admin_Interface {
 
     private function render_usage_bar($label, $current, $limit, $type) {
         $percentage = $limit > 0 ? min(($current / $limit) * 100, 100) : 0;
-        $color = $percentage > 90 ? '#dc2626' : ($percentage > 70 ? '#f59e0b' : '#10b981');
+        $bar_class = $percentage > 90 ? 'usage-critical' : ($percentage > 70 ? 'usage-warning' : 'usage-good');
 
         echo '<div class="usage-bar-container">';
         echo '<div class="usage-bar-header">';
@@ -709,7 +396,7 @@ class AIVectorSearch_Admin_Interface {
         echo '<span>' . number_format($current) . ($limit > 0 ? ' / ' . number_format($limit) : '') . '</span>';
         echo '</div>';
         echo '<div class="usage-bar">';
-        echo '<div class="usage-bar-fill" style="width: ' . $percentage . '%; background-color: ' . $color . '"></div>';
+        echo '<div class="usage-bar-fill ' . esc_attr($bar_class) . '" style="width: ' . $percentage . '%"></div>';
         echo '</div>';
         echo '</div>';
     }
@@ -797,11 +484,11 @@ class AIVectorSearch_Admin_Interface {
     }
 
     private function render_health_overview(array $data) {
-        echo '<div class="notice notice-success"><p>' . esc_html__('✅ Successfully connected to Supabase!', 'ai-vector-search-semantic') . '</p></div>';
+        echo '<div class="notice notice-success"><p>✅ Successfully connected to Supabase!</p></div>';
 
-        echo '<h2>' . esc_html__('Store Health Overview', 'ai-vector-search-semantic') . '</h2>';
-        echo '<table class="widefat striped">';
-        echo '<thead><tr><th>Metric</th><th>Count</th><th>Status</th></tr></thead>';
+        echo '<h2>Store Health Overview</h2>';
+        echo '<table class="widefat striped aivs-data-table">';
+        echo '<thead><tr><th>Metric</th><th class="numeric">Count</th><th>Status</th></tr></thead>';
         echo '<tbody>';
 
         $total = intval($data['total_products']);
@@ -820,7 +507,7 @@ class AIVectorSearch_Admin_Interface {
     private function render_health_row(string $label, int $count, bool $is_good) {
         echo '<tr>';
         echo '<td>' . esc_html($label) . '</td>';
-        echo '<td>' . number_format($count) . '</td>';
+        echo '<td class="numeric">' . number_format($count) . '</td>';
         echo '<td>' . ($is_good ? '✅' : '⚠️') . '</td>';
         echo '</tr>';
     }
@@ -828,7 +515,7 @@ class AIVectorSearch_Admin_Interface {
     private function render_embeddings_status_row(int $with_embeddings, int $published) {
         echo '<tr>';
         echo '<td>With Embeddings</td>';
-        echo '<td>' . number_format($with_embeddings) . '</td>';
+        echo '<td class="numeric">' . number_format($with_embeddings) . '</td>';
         echo '<td>';
 
         if ($with_embeddings == 0) {
@@ -837,7 +524,7 @@ class AIVectorSearch_Admin_Interface {
             echo '✅ All products have embeddings';
         } else {
             $percent = round(($with_embeddings / $published) * 100, 1);
-            printf(esc_html__('⚠️ %s%% coverage', 'ai-vector-search-semantic'), esc_html($percent));
+            echo '⚠️ ' . esc_html($percent) . '% coverage';
         }
 
         echo '</td></tr>';
@@ -979,25 +666,21 @@ class AIVectorSearch_Admin_Interface {
         $total_products = wp_count_posts('product')->publish;
         $synced_count = $this->supabase_client->get_synced_count();
 
-        echo '<h2>' . esc_html__('Sync Overview', 'ai-vector-search-semantic') . '</h2>';
-        echo '<table class="widefat striped">';
+        echo '<h2>Sync Overview</h2>';
+        echo '<table class="widefat striped aivs-data-table">';
         echo '<tbody>';
-        echo '<tr><td><strong>WooCommerce Products</strong></td><td>' . number_format($total_products) . '</td></tr>';
-        echo '<tr><td><strong>Synced to Supabase</strong></td><td>' . number_format($synced_count) . '</td></tr>';
+        echo '<tr><td><strong>WooCommerce Products</strong></td><td class="numeric">' . number_format($total_products) . '</td></tr>';
+        echo '<tr><td><strong>Synced to Supabase</strong></td><td class="numeric">' . number_format($synced_count) . '</td></tr>';
         echo '<tr><td><strong>Sync Status</strong></td><td>';
 
         if ($synced_count == 0) {
-            echo '❌ No products synced';
+            echo '<span class="status-indicator status-error">❌ No products synced</span>';
         } elseif ($synced_count >= $total_products) {
-            echo '✅ All products synced';
+            echo '<span class="status-indicator status-success">✅ All products synced</span>';
         } else {
             $percent = round(($synced_count / $total_products) * 100, 1);
-            printf(
-                esc_html__('⚠️ %1$s%% synced (%2$d/%3$d)', 'ai-vector-search-semantic'),
-                esc_html($percent),
-                absint($synced_count),
-                absint($total_products)
-            );
+            echo '<span class="status-indicator status-warning">⚠️ ' . esc_html($percent) . '% synced (' .
+                absint($synced_count) . '/' . absint($total_products) . ')</span>';
         }
 
         echo '</td></tr>';
@@ -1005,13 +688,13 @@ class AIVectorSearch_Admin_Interface {
     }
 
     private function render_sync_actions() {
-        echo '<h2>' . esc_html__('Sync Actions', 'ai-vector-search-semantic') . '</h2>';
+        echo '<h2>Sync Actions</h2>';
 
         // Full sync
-        echo '<div class="card" style="max-width: 600px;">';
+        echo '<div class="sync-action-card">';
         echo '<h3>🔄 Full Sync</h3>';
         echo '<p>Sync all WooCommerce products to Supabase. This may take a while for large catalogs.</p>';
-        echo '<form method="post" style="display:inline;">';
+        echo '<form method="post" class="sync-form">';
         wp_nonce_field('aivesese_sync');
         echo '<input type="hidden" name="action" value="sync_all">';
         echo '<button type="submit" class="button button-primary" onclick="return confirm(\'This will sync all products. Continue?\')">Sync All Products</button>';
@@ -1019,24 +702,26 @@ class AIVectorSearch_Admin_Interface {
         echo '</div>';
 
         // Batch sync
-        echo '<div class="card" style="max-width: 600px; margin-top: 20px;">';
+        echo '<div class="sync-action-card">';
         echo '<h3>⚡ Batch Sync</h3>';
         echo '<p>Sync products in smaller batches to avoid timeouts.</p>';
-        echo '<form method="post" style="display:inline;">';
+        echo '<form method="post" class="sync-form">';
         wp_nonce_field('aivesese_sync');
         echo '<input type="hidden" name="action" value="sync_batch">';
-        echo '<label>Batch Size: <input type="number" name="batch_size" value="50" min="1" max="200" style="width:60px;"></label> ';
-        echo '<label>Offset: <input type="number" name="offset" value="0" min="0" style="width:60px;"></label> ';
+        echo '<div class="sync-form-controls">';
+        echo '<label>Batch Size: <input type="number" name="batch_size" value="50" min="1" max="200" class="small-text"></label> ';
+        echo '<label>Offset: <input type="number" name="offset" value="0" min="0" class="small-text"></label> ';
         echo '<button type="submit" class="button">Sync Batch</button>';
+        echo '</div>';
         echo '</form>';
         echo '</div>';
 
         // Embeddings generation
         if (get_option('aivesese_semantic_toggle') === '1' && get_option('aivesese_openai')) {
-            echo '<div class="card" style="max-width: 600px; margin-top: 20px;">';
+            echo '<div class="sync-action-card">';
             echo '<h3>🧠 Generate Embeddings</h3>';
             echo '<p>Generate or update OpenAI embeddings for products that don\'t have them.</p>';
-            echo '<form method="post" style="display:inline;">';
+            echo '<form method="post" class="sync-form">';
             wp_nonce_field('aivesese_sync');
             echo '<input type="hidden" name="action" value="generate_embeddings">';
             echo '<button type="submit" class="button button-secondary">Generate Missing Embeddings</button>';
@@ -1044,7 +729,7 @@ class AIVectorSearch_Admin_Interface {
             echo '</div>';
         }
 
-        echo '<div id="sync-status" style="margin-top: 20px;"></div>';
+        echo '<div id="sync-status"></div>';
     }
 
     private function render_help_section() {
@@ -1173,8 +858,6 @@ class AIVectorSearch_Admin_Interface {
         $this->render_installation_options($migration_status);
 
         echo '</div>';
-
-        $this->add_postgres_installation_scripts();
     }
 
     private function get_sql_content(): string {
@@ -1204,17 +887,6 @@ class AIVectorSearch_Admin_Interface {
         return '';
     }
 
-    public function enqueue_admin_assets($hook) {
-        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if (!in_array($page, ['aivesese', 'aivesese-status', 'aivesese-sync'], true)) {
-            return;
-        }
-
-        $this->enqueue_help_script();
-        $this->enqueue_admin_styles();
-        $this->enqueue_admin_scripts();
-    }
-
     private function enqueue_help_script() {
         wp_register_script('aivesese-help', false, [], AIVESESE_PLUGIN_VERSION, true);
         wp_enqueue_script('aivesese-help');
@@ -1230,22 +902,135 @@ class AIVectorSearch_Admin_Interface {
     }
 
     private function enqueue_admin_styles() {
-        wp_register_style('aivesese-admin', false, [], AIVESESE_PLUGIN_VERSION);
-        wp_enqueue_style('aivesese-admin');
+        $current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
 
-        $admin_css = $this->get_admin_css();
-        wp_add_inline_style('aivesese-admin', $admin_css);
+        // Main admin interface styles (always load on plugin pages)
+        wp_enqueue_style(
+            'aivesese-admin-interface',
+            AIVESESE_PLUGIN_URL . 'assets/css/admin-interface.css',
+            [],
+            AIVESESE_PLUGIN_VERSION
+        );
+
+        // PostgreSQL installation styles (only on settings page)
+        if ($current_page === 'aivesese') {
+            wp_enqueue_style(
+                'aivesese-postgres-install',
+                AIVESESE_PLUGIN_URL . 'assets/css/postgres-installation.css',
+                ['aivesese-admin-interface'],
+                AIVESESE_PLUGIN_VERSION
+            );
+        }
+
+        // Analytics dashboard styles (only on analytics page)
+        if ($current_page === 'aivesese-analytics') {
+            wp_enqueue_style(
+                'aivesese-analytics-dashboard',
+                AIVESESE_PLUGIN_URL . 'assets/css/analytics-dashboard.css',
+                ['aivesese-admin-interface'],
+                AIVESESE_PLUGIN_VERSION
+            );
+        }
+
+        // Add any conditional inline styles if needed
+        $this->add_conditional_styles($current_page);
+    }
+
+    /**
+     * Add conditional inline styles (minimal, only when necessary)
+     */
+    private function add_conditional_styles($current_page) {
+        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+
+        // Add body class-based styles for connection mode
+        $inline_css = "
+            body.aivesese-mode-{$connection_mode} .{$connection_mode}-only { display: block !important; }
+            body.aivesese-mode-{$connection_mode} .hide-in-{$connection_mode} { display: none !important; }
+        ";
+
+        // Only add if we have conditional styles to add
+        if (!empty($inline_css)) {
+            wp_add_inline_style('aivesese-admin-interface', $inline_css);
+        }
     }
 
     private function enqueue_admin_scripts() {
-        wp_register_script('aivesese-admin', false, [], AIVESESE_PLUGIN_VERSION, true);
-        wp_enqueue_script('aivesese-admin');
+        $current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
 
-        $copy_script = $this->get_copy_sql_script();
-        $submit_script = $this->get_submit_spinner_script();
+        // Main admin interface script (always load on plugin pages)
+        wp_enqueue_script(
+            'aivesese-admin-interface',
+            AIVESESE_PLUGIN_URL . 'assets/js/admin-interface.js',
+            ['jquery'],
+            AIVESESE_PLUGIN_VERSION,
+            true
+        );
 
-        wp_add_inline_script('aivesese-admin', $copy_script);
-        wp_add_inline_script('aivesese-admin', $submit_script);
+        // Localize script with necessary data
+        wp_localize_script('aivesese-admin-interface', 'aivesese_admin', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('aivesese_admin_nonce'),
+            'license_nonce' => wp_create_nonce('aivesese_license_nonce'),
+            'help_nonce' => wp_create_nonce('aivesese_help_nonce'),
+            'strings' => [
+                'activating' => __('Activating...', 'ai-vector-search-semantic'),
+                'processing' => __('Processing...', 'ai-vector-search-semantic'),
+                'license_copied' => __('License key copied to clipboard!', 'ai-vector-search-semantic'),
+                'sql_copied' => __('SQL copied to clipboard.', 'ai-vector-search-semantic'),
+            ]
+        ]);
+
+        // PostgreSQL installation script (only on settings page)
+        if ($current_page === 'aivesese') {
+            wp_enqueue_script(
+                'aivesese-postgres-install',
+                AIVESESE_PLUGIN_URL . 'assets/js/postgres-installation.js',
+                ['jquery', 'aivesese-admin-interface'],
+                AIVESESE_PLUGIN_VERSION,
+                true
+            );
+
+            wp_localize_script('aivesese-postgres-install', 'aivesese_postgres', [
+                'install_nonce' => wp_create_nonce('aivesese_postgres_install_nonce'),
+                'status_nonce' => wp_create_nonce('aivesese_postgres_status_nonce'),
+                'admin_url' => admin_url(),
+            ]);
+        }
+
+        // Analytics dashboard script (only on analytics page)
+        if ($current_page === 'aivesese-analytics') {
+            wp_enqueue_script(
+                'aivesese-analytics-dashboard',
+                AIVESESE_PLUGIN_URL . 'assets/js/analytics-dashboard.js',
+                ['jquery'],
+                AIVESESE_PLUGIN_VERSION,
+                true
+            );
+
+            wp_localize_script('aivesese-analytics-dashboard', 'aivesese_analytics', [
+                'preview_nonce' => wp_create_nonce('aivs_preview_nonce'),
+                'stats_nonce' => wp_create_nonce('aivs_stats_nonce'),
+                'tracking_nonce' => wp_create_nonce('aivs_tracking_nonce'),
+                'analytics_nonce' => wp_create_nonce('aivs_analytics_nonce'),
+            ]);
+        }
+
+        // Woodmart integration (if enabled)
+        if (get_option('aivesese_enable_woodmart_integration', '0') === '1') {
+            wp_enqueue_script(
+                'aivesese-woodmart-integration',
+                AIVESESE_PLUGIN_URL . 'assets/js/woodmart-integration.js',
+                ['jquery'],
+                AIVESESE_PLUGIN_VERSION,
+                true
+            );
+
+            wp_localize_script('aivesese-woodmart-integration', 'aivesese_woodmart', [
+                'search_nonce' => wp_create_nonce('aivs_search_nonce'),
+                'tracking_nonce' => wp_create_nonce('aivs_tracking_nonce'),
+                'enabled' => '1',
+            ]);
+        }
     }
 
     public function show_services_banner() {
@@ -1260,18 +1045,14 @@ class AIVectorSearch_Admin_Interface {
             return;
         }
 
-        echo '<div class="notice notice-success aivesese-services-banner" style="
-            display:flex;align-items:center;gap:16px;
-            border-left:6px solid #673ab7;
-            background:#f5f3ff;padding:14px 18px;margin-top:16px;">
-                <div style="font-size:24px;">🚀</div>
-                <div style="flex:1 1 auto;">
-                    <strong>Need a hand with AI search or Supabase?</strong><br>
-                    Our team at <em>ZZZ Solutions</em> can install, customise and tune everything for you.
-                </div>
-                <a href="https://zzzsolutions.ro" target="_blank" rel="noopener noreferrer"
-                   class="button button-primary">See Services</a>
-            </div>';
+        echo '<div class="notice notice-success aivesese-services-banner">';
+        echo '<div>🚀</div>';
+        echo '<div>';
+        echo '<strong>Need a hand with AI search or Supabase?</strong><br>';
+        echo 'Our team at <em>ZZZ Solutions</em> can install, customise and tune everything for you.';
+        echo '</div>';
+        echo '<a href="https://zzzsolutions.ro" target="_blank" rel="noopener noreferrer" class="button button-primary">See Services</a>';
+        echo '</div>';
     }
 
     public function handle_help_toggle() {
@@ -1285,68 +1066,6 @@ class AIVectorSearch_Admin_Interface {
         update_user_meta(get_current_user_id(), '_aivesese_help_open', $open);
 
         wp_send_json_success(['open' => $open]);
-    }
-
-    // Asset content methods
-    private function get_admin_css(): string {
-        return trim("
-            .ai-supabase-help details { border:1px solid #dcdcde; border-radius:6px; background:#fff; }
-            .ai-supabase-help__summary { padding:12px 14px; cursor:pointer; list-style:none; }
-            .ai-supabase-help__summary::-webkit-details-marker { display:none; }
-            .ai-supabase-help__summary:after { content:'▾'; float:right; transition:transform .2s ease; }
-            .ai-supabase-help details[open] .ai-supabase-help__summary:after { transform:rotate(180deg); }
-            .ai-supabase-help details > *:not(.ai-supabase-help__summary) { padding:0 14px 14px; }
-            .ai-supabase-help__hint { color:#646970; font-weight:400; margin-left:8px; }
-        ");
-    }
-
-    private function get_help_toggle_script(): string {
-        return "(function(){
-            var el = document.getElementById('ai-supabase-help-details');
-            if (!el) return;
-            el.addEventListener('toggle', function(){
-                var body = new FormData();
-                body.append('action', 'aivesese_toggle_help');
-                body.append('open', el.open ? '1' : '0');
-                body.append('nonce', window.AISupabaseHelp.nonce);
-                fetch(window.AISupabaseHelp.ajax_url, { method:'POST', credentials:'same-origin', body: body });
-            }, { passive: true });
-        })();";
-    }
-
-    private function get_copy_sql_script(): string {
-        return "(function(){
-            var btn = document.getElementById('ai-copy-sql');
-            var ta = document.getElementById('ai-sql');
-            var out = document.getElementById('ai-copy-status');
-            if (!btn || !ta) return;
-            btn.addEventListener('click', async function(){
-                try {
-                    await navigator.clipboard.writeText(ta.value);
-                    if(out){ out.textContent = 'SQL copied to clipboard.'; out.style.display='block'; out.style.color='green'; }
-                } catch(e){
-                    ta.select(); document.execCommand('copy');
-                    if(out){ out.textContent = 'Copied using fallback.'; out.style.display='block'; out.style.color='green'; }
-                }
-            }, { passive:true });
-        })();";
-    }
-
-    private function get_submit_spinner_script(): string {
-        return "document.addEventListener('DOMContentLoaded', function(){
-            var forms = document.querySelectorAll('form');
-            forms.forEach(function(form){
-                form.addEventListener('submit', function(){
-                    var button = form.querySelector('button[type=submit]');
-                    if (button) { button.innerHTML = 'Processing...'; button.disabled = true; }
-
-                    var statusDiv = document.getElementById('sync-status');
-                    if (statusDiv) {
-                        statusDiv.innerHTML = '<div class=\"notice notice-info\"><p>⏳ Processing... Please wait.</p></div>';
-                    }
-                });
-            });
-        });";
     }
 
     public function show_sql_update_notice() {
@@ -1412,203 +1131,16 @@ class AIVectorSearch_Admin_Interface {
             return;
         }
 
-        echo '<div class="postgres-connection-field">';
-
-        if ($has_value) {
-            echo '<div class="connection-status configured">';
-            echo '<span class="dashicons dashicons-yes-alt"></span>';
-            echo '<strong>PostgreSQL Connection Configured</strong>';
-            echo '<p>Connection string is securely stored and ready for WP-CLI commands.</p>';
-            echo '<button type="button" class="button" onclick="toggleConnectionString()">Update Connection String</button>';
-            echo '</div>';
-        }
-
-        echo '<div id="connection-string-input" style="' . ($has_value ? 'display: none;' : '') . '">';
-        echo '<textarea id="aivesese_postgres_connection_string" name="aivesese_postgres_connection_string" ';
-        echo 'rows="3" cols="80" class="large-text" placeholder="postgresql://username:password@hostname:port/database">';
-        echo esc_textarea($value);
-        echo '</textarea>';
-
-        echo '<div class="postgres-connection-help">';
-        echo '<h4>🔗 How to get your PostgreSQL connection string:</h4>';
-        echo '<ol>';
-        echo '<li>Go to your Supabase project → <strong>Settings</strong> → <strong>Database</strong></li>';
-        echo '<li>Scroll down to <strong>"Connection parameters"</strong> or <strong>"Connection pooling"</strong></li>';
-        echo '<li>Copy the <strong>"Connection string"</strong> (URI format)</li>';
-        echo '<li>Make sure to use the <strong>direct connection</strong> (not pooled) for schema operations</li>';
-        echo '</ol>';
-
-        echo '<div class="connection-string-examples">';
-        echo '<p><strong>📝 Example format:</strong></p>';
-        echo '<code>postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres</code>';
-        echo '</div>';
-
-        echo '<div class="security-note">';
-        echo '<p><strong>🔒 Security:</strong> This connection string will be encrypted and stored securely in your WordPress database.</p>';
-        echo '</div>';
-
-        echo '</div>';
-        echo '</div>';
-
-        // WP-CLI Command Info
-        echo '<div class="wp-cli-info">';
-        echo '<h4>⚡ WP-CLI Schema Installation</h4>';
-        echo '<p>Once configured, you can install/update your schema with one command:</p>';
-        echo '<div class="cli-command-box">';
-        echo '<code>wp aivs install-schema</code>';
-        echo '<button type="button" class="button button-small" onclick="copyCliCommand()">Copy Command</button>';
-        echo '</div>';
-
-        echo '<p><strong>Available WP-CLI commands:</strong></p>';
-        echo '<ul style="margin-left: 20px;">';
-        echo '<li><code>wp aivs install-schema</code> - Install/update database schema</li>';
-        echo '<li><code>wp aivs check-schema</code> - Check schema status</li>';
-        echo '<li><code>wp aivs test-connection</code> - Test database connection</li>';
-        echo '<li><code>wp aivs sync-products</code> - Sync WooCommerce products</li>';
-        echo '</ul>';
-
-        echo '<p><em>💡 WP-CLI provides a reliable, professional way to manage database schema installations.</em></p>';
-        echo '</div>';
-
-        echo '</div>'; // close postgres-connection-field
-
-        $this->add_postgres_connection_scripts();
+        // Use template file instead of inline HTML
+        $template_vars = compact('connection_mode', 'value', 'has_value');
+        $this->load_template('postgres-connection', $template_vars);
     }
 
     /**
-     * Add JavaScript for PostgreSQL connection field
+     * Render PostgreSQL help section (extracted from inline HTML)
      */
-    private function add_postgres_connection_scripts() {
-        ?>
-        <script>
-        function toggleConnectionString() {
-            const input = document.getElementById('connection-string-input');
-            const status = document.querySelector('.connection-status');
-
-            if (input.style.display === 'none') {
-                input.style.display = 'block';
-                status.style.display = 'none';
-            } else {
-                input.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        function copyCliCommand() {
-            const command = 'wp aivs install-schema';
-            navigator.clipboard.writeText(command).then(function() {
-                alert('✅ WP-CLI command copied to clipboard!');
-            }).catch(function() {
-                // Fallback
-                const textArea = document.createElement('textarea');
-                textArea.value = command;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                alert('✅ WP-CLI command copied to clipboard!');
-            });
-        }
-        </script>
-
-        <style>
-        .postgres-connection-field {
-            max-width: 800px;
-            margin: 20px 0;
-        }
-
-        .connection-status {
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #46b450;
-            background: #f0f9ff;
-            margin-bottom: 15px;
-        }
-
-        .connection-status .dashicons {
-            color: #46b450;
-            margin-right: 8px;
-        }
-
-        .postgres-connection-help {
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 15px;
-        }
-
-        .postgres-connection-help h4 {
-            margin-top: 0;
-            color: #0073aa;
-        }
-
-        .connection-string-examples {
-            background: #fff;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-            border-left: 3px solid #0073aa;
-        }
-
-        .connection-string-examples code {
-            display: block;
-            word-break: break-all;
-            font-size: 12px;
-            color: #d63638;
-        }
-
-        .security-note {
-            background: #fff3cd;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-            border-left: 3px solid #ffc107;
-        }
-
-        .wp-cli-info {
-            background: #e8f4fd;
-            padding: 20px;
-            border-radius: 6px;
-            margin-top: 20px;
-            border-left: 4px solid #0073aa;
-        }
-
-        .wp-cli-info h4 {
-            margin-top: 0;
-            color: #0073aa;
-        }
-
-        .cli-command-box {
-            background: #23282d;
-            color: #f1f1f1;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 15px 0;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .cli-command-box code {
-            background: none;
-            color: #46b450;
-            font-size: 16px;
-            flex: 1;
-            font-weight: bold;
-        }
-
-        .wp-cli-info ul {
-            background: rgba(255,255,255,0.7);
-            padding: 15px 20px;
-            border-radius: 4px;
-        }
-
-        .wp-cli-info li {
-            margin: 8px 0;
-            font-family: monospace;
-        }
-        </style>
-        <?php
+    private function render_postgres_help_section() {
+        include AIVESESE_PLUGIN_PATH . 'assets/templates/postgres-help-section.php';
     }
 
     /**
@@ -1677,24 +1209,23 @@ class AIVectorSearch_Admin_Interface {
                 echo ' via <strong>' . esc_html($install_method) . '</strong>';
             }
             echo '</p>';
-            echo '<p>';
+            echo '<div class="installation-actions">';
             echo '<button type="button" class="button" id="postgres-reinstall-btn">Update Schema</button> ';
             echo '<button type="button" class="button button-small" id="postgres-check-status-btn">Check Status</button>';
-            echo '</p>';
+            echo '</div>';
             echo '</div>';
         }
 
-        // Installation options
         echo '<div class="installation-options">';
 
-        // Option 1: PostgreSQL Direct Installation
+        // PostgreSQL installation option
         if ($migration_status['can_run']) {
             $this->render_postgres_installation_option();
         } else {
             $this->render_postgres_installation_unavailable($migration_status);
         }
 
-        // Option 2: Manual Installation
+        // Manual installation option
         $this->render_manual_installation_option();
 
         echo '</div>';
@@ -1704,603 +1235,33 @@ class AIVectorSearch_Admin_Interface {
      * Render PostgreSQL installation option (available)
      */
     private function render_postgres_installation_option() {
-        echo '<div class="installation-option postgres-option">';
-        echo '<h3>🚀 Direct PostgreSQL Installation (Recommended)</h3>';
-        echo '<p>Install schema directly via PostgreSQL connection - fastest and most reliable method.</p>';
-
-        echo '<div class="postgres-benefits">';
-        echo '<ul>';
-        echo '<li>✅ <strong>One-click installation</strong> - No copy/paste needed</li>';
-        echo '<li>✅ <strong>Transactional safety</strong> - Automatic rollback on errors</li>';
-        echo '<li>✅ <strong>Real-time feedback</strong> - See exactly what happens</li>';
-        echo '<li>✅ <strong>Professional grade</strong> - Same method used by WP-CLI</li>';
-        echo '</ul>';
-        echo '</div>';
-
-        echo '<div class="postgres-action">';
-        echo '<button type="button" class="button button-primary button-large" id="postgres-install-btn">';
-        echo '<span class="dashicons dashicons-database" style="margin-right: 8px;"></span>';
-        echo 'Install Schema via PostgreSQL';
-        echo '</button>';
-        echo '</div>';
-
-        echo '<div id="postgres-installation-progress" style="display: none; margin: 20px 0;">';
-        echo '<div class="progress-bar" style="background: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden; margin: 10px 0;">';
-        echo '<div class="progress-fill" style="background: #0073aa; height: 100%; width: 0%; transition: width 0.3s ease;"></div>';
-        echo '</div>';
-        echo '<div class="progress-text" style="font-style: italic; color: #666;">Preparing installation...</div>';
-        echo '</div>';
-
-        echo '<div id="postgres-installation-result" style="margin-top: 20px;"></div>';
-
-        echo '</div>'; // close postgres-option
+        include AIVESESE_PLUGIN_PATH . 'assets/templates/postgres-installation-option.php';
     }
 
     /**
      * Render PostgreSQL installation unavailable notice
      */
     private function render_postgres_installation_unavailable(array $status) {
-        echo '<div class="installation-option postgres-unavailable">';
-        echo '<h3>🚀 Direct PostgreSQL Installation</h3>';
-        echo '<div class="notice notice-warning inline">';
-        echo '<p><strong>⚠️ PostgreSQL installation not available</strong></p>';
-
-        echo '<div class="requirements-check">';
-        echo '<h4>Requirements Status:</h4>';
-        echo '<ul>';
-
-        foreach ($status['requirements'] as $requirement => $met) {
-            $icon = $met ? '✅' : '❌';
-            $req_name = ucwords(str_replace('_', ' ', $requirement));
-            echo "<li>{$icon} {$req_name}</li>";
-        }
-
-        echo '</ul>';
-        echo '</div>';
-
-        if (!$status['requirements']['psql_command']) {
-            echo '<div class="psql-install-help">';
-            echo '<p><strong>To enable PostgreSQL installation:</strong></p>';
-            echo '<ol>';
-            echo '<li>Install PostgreSQL client on your server:</li>';
-            echo '<ul style="margin-left: 20px;">';
-            echo '<li><strong>Ubuntu/Debian:</strong> <code>sudo apt-get install postgresql-client</code></li>';
-            echo '<li><strong>CentOS/RHEL:</strong> <code>sudo yum install postgresql</code></li>';
-            echo '<li><strong>Alpine:</strong> <code>apk add postgresql-client</code></li>';
-            echo '</ul>';
-            echo '<li>Configure PostgreSQL connection string above</li>';
-            echo '<li>Refresh this page</li>';
-            echo '</ol>';
-            echo '</div>';
-        }
-
-        if (!$status['requirements']['connection_string']) {
-            echo '<p><strong>Missing:</strong> Configure your PostgreSQL connection string in the field above.</p>';
-        }
-
-        echo '</div>';
-        echo '</div>'; // close postgres-unavailable
+        include AIVESESE_PLUGIN_PATH . 'assets/templates/postgres-installation-unavailable.php';
     }
 
     /**
      * Render manual installation option
      */
     private function render_manual_installation_option() {
-        echo '<div class="installation-option manual-option">';
-        echo '<h3>📝 Manual Installation</h3>';
-        echo '<p>Copy the SQL and run it manually in Supabase SQL Editor - always available as fallback.</p>';
-
-        echo '<div class="manual-benefits">';
-        echo '<ul>';
-        echo '<li>✅ <strong>Always works</strong> - No server requirements</li>';
-        echo '<li>✅ <strong>Full control</strong> - See exactly what gets executed</li>';
-        echo '<li>✅ <strong>Educational</strong> - Learn the database structure</li>';
-        echo '<li>✅ <strong>Universal</strong> - Works on any hosting environment</li>';
-        echo '</ul>';
-        echo '</div>';
-
-        echo '<details>';
-        echo '<summary class="manual-toggle"><strong>Show Manual Installation</strong></summary>';
-        echo '<div class="manual-content" style="margin-top: 15px;">';
-
-        $this->render_manual_installation_steps();
-
-        echo '</div>';
-        echo '</details>';
-
-        echo '</div>'; // close manual-option
+        $sql_content = $this->get_sql_content();
+        include AIVESESE_PLUGIN_PATH . 'assets/templates/manual-installation-option.php';
     }
 
     /**
      * Render manual installation steps
      */
     private function render_manual_installation_steps() {
-        echo '<div class="manual-steps">';
-        echo '<h4>📋 Manual Installation Steps:</h4>';
-        echo '<ol>';
-        echo '<li>Open your Supabase project → <strong>SQL Editor</strong> → <strong>New query</strong></li>';
-        echo '<li>Click "Copy SQL" below and paste it into the editor</li>';
-        echo '<li>Press <strong>RUN</strong> and wait for success</li>';
-        echo '<li>✅ Safe to re-run: Uses CREATE OR REPLACE and IF NOT EXISTS</li>';
-        echo '</ol>';
-        echo '</div>';
-
         $sql_content = $this->get_sql_content();
-        if ($sql_content) {
-            echo '<p style="margin: 20px 0;">';
-            echo '<button class="button button-secondary" id="copy-manual-sql-btn">';
-            echo '<span class="dashicons dashicons-clipboard" style="margin-right: 5px;"></span>';
-            echo 'Copy SQL for Manual Installation';
-            echo '</button>';
-            echo '</p>';
 
-            echo '<textarea id="manual-sql-content" rows="12" style="width:100%; font-family:Consolas,Monaco,monospace; font-size:12px; border:2px solid #ddd; background:#f9f9f9;" readonly>' .
-                esc_textarea($sql_content) . '</textarea>';
-            echo '<p id="manual-copy-status" style="display:none; margin-top: 10px;"></p>';
-        } else {
-            echo '<div class="notice notice-error inline">';
-            echo '<p><strong>❌ SQL file not found</strong></p>';
-            echo '<p>Expected location: <code>' . AIVESESE_PLUGIN_PATH . 'supabase.sql</code></p>';
-            echo '</div>';
-        }
-    }
-
-    /**
-     * Add PostgreSQL installation JavaScript
-     */
-    private function add_postgres_installation_scripts() {
-        ?>
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const installBtn = document.getElementById('postgres-install-btn');
-            const reinstallBtn = document.getElementById('postgres-reinstall-btn');
-            const checkStatusBtn = document.getElementById('postgres-check-status-btn');
-            const progressDiv = document.getElementById('postgres-installation-progress');
-            const progressFill = document.querySelector('#postgres-installation-progress .progress-fill');
-            const progressText = document.querySelector('#postgres-installation-progress .progress-text');
-            const resultDiv = document.getElementById('postgres-installation-result');
-            const copyManualBtn = document.getElementById('copy-manual-sql-btn');
-
-            // PostgreSQL Installation Handler
-            function handlePostgresInstallation(isReinstall = false) {
-                const btn = isReinstall ? reinstallBtn : installBtn;
-                if (!btn) return;
-
-                const originalHTML = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<span class="dashicons dashicons-update spin"></span> ' + (isReinstall ? 'Updating...' : 'Installing...');
-
-                // Show progress
-                if (progressDiv) {
-                    progressDiv.style.display = 'block';
-                    if (progressFill) progressFill.style.width = '20%';
-                    if (progressText) progressText.textContent = 'Connecting to PostgreSQL database...';
-                }
-
-                if (resultDiv) {
-                    resultDiv.innerHTML = '<div class="notice notice-info"><p>🔄 Installing schema via PostgreSQL connection...</p></div>';
-                }
-
-                // Progress simulation
-                let progress = 20;
-                const progressInterval = setInterval(() => {
-                    if (progress < 90) {
-                        progress += Math.random() * 15;
-                        if (progressFill) progressFill.style.width = Math.min(progress, 90) + '%';
-
-                        if (progress > 40 && progress < 60 && progressText) {
-                            progressText.textContent = 'Executing SQL schema...';
-                        } else if (progress > 60 && progress < 80 && progressText) {
-                            progressText.textContent = 'Creating functions and triggers...';
-                        }
-                    }
-                }, 800);
-
-                fetch(ajaxurl, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: new URLSearchParams({
-                        action: 'aivesese_postgres_install_schema',
-                        nonce: '<?php echo wp_create_nonce('aivesese_postgres_install_nonce'); ?>'
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    clearInterval(progressInterval);
-
-                    if (progressFill) {
-                        progressFill.style.width = '100%';
-                        progressFill.style.background = data.success ? '#46b450' : '#dc3232';
-                    }
-
-                    if (progressText) {
-                        progressText.textContent = data.success ? 'Installation completed!' : 'Installation failed';
-                    }
-
-                    if (data.success) {
-                        handleSuccessfulInstallation(data.data);
-                    } else {
-                        handleFailedInstallation(data.data);
-                    }
-                })
-                .catch(error => {
-                    clearInterval(progressInterval);
-                    handleInstallationError(error);
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHTML;
-
-                    setTimeout(() => {
-                        if (progressDiv) progressDiv.style.display = 'none';
-                    }, 5000);
-                });
-            }
-
-            // Success handler
-            function handleSuccessfulInstallation(data) {
-                if (!resultDiv) return;
-
-                let message = '<div class="notice notice-success">';
-                message += '<h4>✅ ' + data.message + '</h4>';
-
-                if (data.details && data.details.stdout) {
-                    message += '<details style="margin: 15px 0;"><summary><strong>Installation Details</strong></summary>';
-                    message += '<pre style="background: #f9f9f9; padding: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto;">';
-                    message += data.details.stdout;
-                    message += '</pre></details>';
-                }
-
-                message += '<div style="margin: 15px 0; padding: 15px; background: #e8f4fd; border-left: 4px solid #0073aa; border-radius: 0 4px 4px 0;">';
-                message += '<h4>🎉 Next Steps:</h4>';
-                message += '<ol>';
-                message += '<li>✅ Database schema is ready</li>';
-                message += '<li>📦 <a href="<?php echo admin_url('options-general.php?page=aivesese-sync'); ?>">Sync your products</a></li>';
-                message += '<li>🔍 Test search functionality on your store</li>';
-                message += '</ol>';
-                message += '</div>';
-
-                message += '</div>';
-                resultDiv.innerHTML = message;
-
-                // Refresh page after delay
-                setTimeout(() => {
-                    window.location.reload();
-                }, 8000);
-            }
-
-            // Error handler
-            function handleFailedInstallation(data) {
-                if (!resultDiv) return;
-
-                let message = '<div class="notice notice-error">';
-                message += '<h4>❌ Installation Failed</h4>';
-                message += '<p><strong>Error:</strong> ' + data.message + '</p>';
-
-                if (data.details) {
-                    if (data.details.errors && data.details.errors.length > 0) {
-                        message += '<details style="margin: 15px 0;"><summary><strong>Error Details</strong></summary>';
-                        message += '<div style="background: #fef2f2; padding: 10px; border-radius: 4px; margin: 10px 0;">';
-                        data.details.errors.forEach(error => {
-                            message += '<div style="color: #dc3232; margin: 5px 0;">' + error + '</div>';
-                        });
-                        message += '</div></details>';
-                    }
-
-                    if (data.details.suggestions && data.details.suggestions.length > 0) {
-                        message += '<div style="margin: 15px 0; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 0 4px 4px 0;">';
-                        message += '<h4>💡 Suggestions:</h4>';
-                        message += '<ul>';
-                        data.details.suggestions.forEach(suggestion => {
-                            message += '<li>' + suggestion + '</li>';
-                        });
-                        message += '</ul>';
-                        message += '</div>';
-                    }
-                }
-
-                message += '<div style="margin: 15px 0; padding: 15px; background: #f9f9f9; border-radius: 4px;">';
-                message += '<h4>🛠️ What to do:</h4>';
-                message += '<ol>';
-                message += '<li>Check the error details above for specific issues</li>';
-                message += '<li>Verify your PostgreSQL connection string is correct</li>';
-                message += '<li>Try the manual installation method below</li>';
-                message += '<li>Contact support if issues persist</li>';
-                message += '</ol>';
-                message += '</div>';
-
-                message += '</div>';
-                resultDiv.innerHTML = message;
-            }
-
-            // Network error handler
-            function handleInstallationError(error) {
-                if (!resultDiv) return;
-
-                resultDiv.innerHTML = '<div class="notice notice-error">' +
-                    '<h4>❌ Connection Error</h4>' +
-                    '<p>Unable to communicate with the installation service.</p>' +
-                    '<p><strong>Error:</strong> ' + error.message + '</p>' +
-                    '<p><strong>Try:</strong> Refresh the page and try again, or use manual installation.</p>' +
-                    '</div>';
-            }
-
-            // Status check handler
-            function handleStatusCheck() {
-                const btn = checkStatusBtn;
-                const originalHTML = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<span class="dashicons dashicons-update spin"></span> Checking...';
-
-                fetch(ajaxurl, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: new URLSearchParams({
-                        action: 'aivesese_postgres_check_status',
-                        nonce: '<?php echo wp_create_nonce('aivesese_postgres_status_nonce'); ?>'
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        displayStatusResults(data.data);
-                    } else {
-                        if (resultDiv) {
-                            resultDiv.innerHTML = '<div class="notice notice-error"><p>Status check failed: ' + data.data.message + '</p></div>';
-                        }
-                    }
-                })
-                .catch(error => {
-                    if (resultDiv) {
-                        resultDiv.innerHTML = '<div class="notice notice-error"><p>Status check failed: ' + error.message + '</p></div>';
-                    }
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHTML;
-                });
-            }
-
-            // Display status results
-            function displayStatusResults(status) {
-                if (!resultDiv) return;
-
-                let message = '<div class="notice notice-info">';
-                message += '<h4>📊 PostgreSQL Installation Status</h4>';
-
-                message += '<div style="margin: 15px 0;">';
-                message += '<p><strong>Installation Ready:</strong> ' + (status.can_run ? '✅ Yes' : '❌ No') + '</p>';
-
-                message += '<h4>Requirements Check:</h4>';
-                message += '<ul style="margin-left: 20px;">';
-                Object.entries(status.requirements).forEach(([req, met]) => {
-                    const icon = met ? '✅' : '❌';
-                    const name = req.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    message += '<li>' + icon + ' ' + name + '</li>';
-                });
-                message += '</ul>';
-                message += '</div>';
-
-                if (!status.can_run) {
-                    message += '<div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 15px 0;">';
-                    message += '<p><strong>💡 To enable PostgreSQL installation:</strong></p>';
-
-                    if (!status.requirements.psql_command) {
-                        message += '<p>Install PostgreSQL client on your server</p>';
-                    }
-                    if (!status.requirements.connection_string) {
-                        message += '<p>Configure PostgreSQL connection string above</p>';
-                    }
-                    if (!status.requirements.sql_file) {
-                        message += '<p>Ensure supabase.sql file exists in plugin directory</p>';
-                    }
-
-                    message += '</div>';
-                }
-
-                message += '</div>';
-                resultDiv.innerHTML = message;
-            }
-
-            // Manual SQL copy handler
-            function handleManualCopy() {
-                const textarea = document.getElementById('manual-sql-content');
-                const statusEl = document.getElementById('manual-copy-status');
-
-                if (!textarea || !statusEl) return;
-
-                navigator.clipboard.writeText(textarea.value).then(() => {
-                    statusEl.innerHTML = '<div style="color: #00a32a; background: #f0f9ff; padding: 10px; border-radius: 4px;">' +
-                        '✅ SQL copied to clipboard! Paste it in Supabase → SQL Editor and run it.</div>';
-                    statusEl.style.display = 'block';
-                }).catch(() => {
-                    // Fallback
-                    textarea.select();
-                    document.execCommand('copy');
-                    statusEl.innerHTML = '<div style="color: #00a32a; background: #f0f9ff; padding: 10px; border-radius: 4px;">' +
-                        '✅ SQL copied to clipboard! Paste it in Supabase → SQL Editor and run it.</div>';
-                    statusEl.style.display = 'block';
-                });
-
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 8000);
-            }
-
-            // Event listeners
-            if (installBtn) {
-                installBtn.addEventListener('click', () => handlePostgresInstallation(false));
-            }
-
-            if (reinstallBtn) {
-                reinstallBtn.addEventListener('click', () => handlePostgresInstallation(true));
-            }
-
-            if (checkStatusBtn) {
-                checkStatusBtn.addEventListener('click', handleStatusCheck);
-            }
-
-            if (copyManualBtn) {
-                copyManualBtn.addEventListener('click', handleManualCopy);
-            }
-
-            // Add spin animation
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-                .spin {
-                    animation: spin 1s linear infinite;
-                    display: inline-block;
-                }
-            `;
-            document.head.appendChild(style);
-        });
-        </script>
-
-        <style>
-        .aivesese-schema-section {
-            margin: 20px 0;
-        }
-
-        .installation-options {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 30px;
-            margin: 30px 0;
-        }
-
-        .installation-option {
-            border: 2px solid #ddd;
-            border-radius: 12px;
-            padding: 25px;
-            background: #fff;
-            transition: all 0.3s ease;
-        }
-
-        .installation-option:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .postgres-option {
-            border-color: #0073aa;
-            background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%);
-        }
-
-        .postgres-unavailable {
-            border-color: #ffc107;
-            background: #fffbf0;
-        }
-
-        .manual-option {
-            border-color: #666;
-            background: #f9f9f9;
-        }
-
-        .installation-option h3 {
-            margin-top: 0;
-            color: #23282d;
-            font-size: 20px;
-        }
-
-        .postgres-benefits ul,
-        .manual-benefits ul {
-            background: rgba(255,255,255,0.8);
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-
-        .postgres-benefits li,
-        .manual-benefits li {
-            margin: 8px 0;
-            font-size: 14px;
-        }
-
-        .postgres-action {
-            text-align: center;
-            margin: 25px 0;
-        }
-
-        .button-large {
-            font-size: 16px;
-            padding: 12px 24px;
-            height: auto;
-        }
-
-        .requirements-check ul {
-            background: rgba(255,255,255,0.8);
-            padding: 15px 20px;
-            border-radius: 6px;
-            margin: 15px 0;
-        }
-
-        .psql-install-help {
-            background: #e8f4fd;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-
-        .manual-toggle {
-            cursor: pointer;
-            padding: 12px 16px;
-            background: #f0f0f0;
-            border-radius: 6px;
-            display: block;
-            margin: 15px 0;
-            transition: background-color 0.3s ease;
-        }
-
-        .manual-toggle:hover {
-            background: #e0e0e0;
-        }
-
-        .manual-content {
-            border-left: 4px solid #666;
-            padding-left: 20px;
-            margin: 20px 0;
-        }
-
-        .manual-steps {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 15px 0;
-        }
-
-        #postgres-installation-progress .progress-bar {
-            background: #f0f0f0;
-            height: 24px;
-            border-radius: 12px;
-            overflow: hidden;
-            margin: 15px 0;
-            border: 1px solid #ddd;
-        }
-
-        #postgres-installation-progress .progress-fill {
-            height: 100%;
-            background: linear-gradient(45deg, #0073aa 25%, transparent 25%, transparent 50%, #0073aa 50%, #0073aa 75%, transparent 75%);
-            background-size: 20px 20px;
-            animation: progress-stripes 1s linear infinite;
-            transition: width 0.3s ease;
-        }
-
-        @keyframes progress-stripes {
-            0% { background-position: 0 0; }
-            100% { background-position: 20px 0; }
-        }
-
-        #postgres-installation-progress .progress-text {
-            font-style: italic;
-            color: #666;
-            text-align: center;
-            margin-top: 10px;
-        }
-        </style>
-        <?php
+        // Use template file instead of inline HTML
+        $template_vars = compact('sql_content');
+        $this->load_template('manual-installation', $template_vars);
     }
 
     /**
@@ -2312,5 +1273,58 @@ class AIVectorSearch_Admin_Interface {
         $store_id = trim(get_option('aivesese_store', ''));
 
         return !empty($url) && !empty($key) && !empty($store_id);
+    }
+
+    /**
+     * Add body classes for better CSS targeting
+     */
+    public function add_admin_body_class($classes) {
+        $screen = get_current_screen();
+        if ($screen && strpos($screen->id, 'aivesese') !== false) {
+            $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+            $classes .= ' aivesese-admin aivesese-mode-' . $connection_mode;
+        }
+        return $classes;
+    }
+
+    /**
+     * Register the admin body class filter
+     */
+    private function init_admin_body_classes() {
+        add_filter('admin_body_class', [$this, 'add_admin_body_class']);
+    }
+
+    /**
+     * Load template file helper method (NEW)
+     */
+    private function load_template($template_name, $vars = []) {
+        $template_path = AIVESESE_PLUGIN_PATH . "assets/templates/{$template_name}.php";
+
+        if (file_exists($template_path)) {
+            // Extract variables for template
+            extract($vars);
+            include $template_path;
+        } else {
+            error_log("AI Vector Search: Template not found - {$template_path}");
+            echo "<div class='notice notice-error'><p>Template missing: {$template_name}.php</p></div>";
+        }
+    }
+
+    /**
+     * Enhanced template loading with error handling (NEW)
+     */
+    private function load_template_with_fallback($template_name, $vars = [], $fallback_content = '') {
+        $template_path = AIVESESE_PLUGIN_PATH . "assets/templates/{$template_name}.php";
+
+        if (file_exists($template_path)) {
+            extract($vars);
+            ob_start();
+            include $template_path;
+            return ob_get_clean();
+        }
+
+        // Log error and return fallback
+        error_log("AI Vector Search: Template not found - {$template_path}");
+        return $fallback_content;
     }
 }

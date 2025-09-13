@@ -1,0 +1,1277 @@
+/**
+ * Analytics Dashboard CSS
+ * File: assets/css/analytics-dashboard.css
+ */
+
+/* ==========================================================================
+   Analytics Dashboard Container
+   ========================================================================== */
+
+.aivs-analytics-dashboard {
+    max-width: 1200px;
+    margin: 0;
+}
+
+.aivs-analytics-dashboard h1 {
+    color: #1d2327;
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   Business Insights Section
+   ========================================================================== */
+
+.aivs-insights-section {
+    background: #f8f9fa;
+    border-left: 4px solid #0073aa;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.aivs-insights-section h2 {
+    margin-top: 0;
+    color: #0073aa;
+    font-size: 20px;
+}
+
+.aivs-insight {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 8px;
+    border-left: 4px solid;
+    transition: all 0.3s ease;
+}
+
+.aivs-insight:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.aivs-insight-success {
+    background: #f0f9ff;
+    border-left-color: #46b450;
+}
+
+.aivs-insight-warning {
+    background: #fffbf0;
+    border-left-color: #ffb900;
+}
+
+.aivs-insight-opportunity {
+    background: #f0fff4;
+    border-left-color: #00a32a;
+}
+
+.aivs-insight-error {
+    background: #fef2f2;
+    border-left-color: #dc3232;
+}
+
+.aivs-insight-icon {
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.aivs-insight-content {
+    flex: 1;
+}
+
+.aivs-insight-content h4 {
+    margin: 0 0 8px 0;
+    color: #1d2327;
+    font-size: 16px;
+}
+
+.aivs-insight-content p {
+    margin: 0 0 8px 0;
+    color: #50575e;
+    line-height: 1.5;
+}
+
+.aivs-insight-action {
+    color: #646970;
+    font-style: italic;
+    font-size: 13px;
+}
+
+.insight-dismiss-btn {
+    background: none;
+    border: none;
+    color: #646970;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px;
+    margin-left: 10px;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.insight-dismiss-btn:hover {
+    opacity: 1;
+    color: #dc3232;
+}
+
+/* ==========================================================================
+   Statistics Grid
+   ========================================================================== */
+
+.aivs-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.aivs-stat-card {
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.aivs-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #0073aa, #00a32a);
+}
+
+.aivs-stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.aivs-stat-card h3 {
+    margin: 0 0 12px 0;
+    color: #646970;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.aivs-stat-number {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0073aa;
+    margin: 12px 0;
+    line-height: 1;
+    transition: transform 0.3s ease;
+}
+
+.aivs-stat-card:hover .aivs-stat-number {
+    transform: scale(1.05);
+}
+
+.aivs-stat-good { color: #46b450; }
+.aivs-stat-okay { color: #ffb900; }
+.aivs-stat-poor { color: #dc3232; }
+
+.aivs-stat-card small {
+    color: #646970;
+    font-size: 12px;
+    margin-top: 8px;
+    display: block;
+}
+
+/* ==========================================================================
+   Analytics Sections
+   ========================================================================== */
+
+.aivs-analytics-section {
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.aivs-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.aivs-section-header h2 {
+    margin: 0;
+    color: #1d2327;
+    font-size: 20px;
+}
+
+.aivs-section-header .button {
+    background: #0073aa;
+    border-color: #005a8a;
+    color: white;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.aivs-section-header .button:hover {
+    background: #005a8a;
+    transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Performance Badges
+   ========================================================================== */
+
+.aivs-performance-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+.aivs-good {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.aivs-okay {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.aivs-poor {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* ==========================================================================
+   Popular Terms Table
+   ========================================================================== */
+
+.wp-list-table.aivs-terms-table {
+    margin-top: 15px;
+}
+
+.wp-list-table.aivs-terms-table th {
+    background: #f8f9fa;
+    color: #1d2327;
+    font-weight: 600;
+    padding: 12px 15px;
+    border-bottom: 2px solid #e1e5e9;
+}
+
+.wp-list-table.aivs-terms-table td {
+    padding: 12px 15px;
+    vertical-align: middle;
+}
+
+.wp-list-table.aivs-terms-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.wp-list-table.aivs-terms-table .search-term {
+    font-weight: 600;
+    color: #0073aa;
+}
+
+.preview-search-btn {
+    background: none;
+    border: 1px solid #ddd;
+    color: #646970;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.preview-search-btn:hover {
+    background: #0073aa;
+    color: white;
+    border-color: #0073aa;
+}
+
+/* ==========================================================================
+   Search Preview Modal
+   ========================================================================== */
+
+.search-preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.search-preview-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    max-width: 600px;
+    max-height: 500px;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.search-preview-header {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e1e5e9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-preview-header h4 {
+    margin: 0;
+    color: #1d2327;
+    font-size: 16px;
+}
+
+.search-preview-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #646970;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.search-preview-close:hover {
+    background: #e1e5e9;
+    color: #1d2327;
+}
+
+.search-preview-body {
+    padding: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.search-preview-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #646970;
+}
+
+.search-preview-loading .dashicons {
+    font-size: 24px;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+/* ==========================================================================
+   Search Results Grid
+   ========================================================================== */
+
+.search-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.search-result-item {
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.search-result-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.search-result-item a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.result-image {
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.result-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.result-image-placeholder {
+    width: 100%;
+    height: 120px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #c3c4c7;
+    font-size: 48px;
+}
+
+.result-image-placeholder::before {
+    content: "🏷️";
+}
+
+.result-details {
+    padding: 15px;
+}
+
+.result-details h5 {
+    margin: 0 0 8px 0;
+    color: #0073aa;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.result-price {
+    color: #46b450;
+    font-weight: 600;
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.result-sku {
+    color: #646970;
+    font-size: 12px;
+}
+
+.search-results-footer {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    border-top: 1px solid #e1e5e9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.results-count {
+    color: #646970;
+    font-size: 13px;
+}
+
+.view-all-results {
+    color: #0073aa;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    transition: color 0.3s ease;
+}
+
+.view-all-results:hover {
+    color: #005a8a;
+}
+
+/* ==========================================================================
+   Opportunity Finder Section
+   ========================================================================== */
+
+.aivs-opportunity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.aivs-opportunity-card {
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    border-left: 4px solid #ffb900;
+}
+
+.aivs-opportunity-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    border-left-color: #ff8f00;
+}
+
+.aivs-opportunity-term {
+    font-size: 18px;
+    font-weight: bold;
+    color: #1d2327;
+    margin-bottom: 12px;
+    background: #fff8e1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ffe082;
+}
+
+.aivs-opportunity-stats {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.aivs-search-count {
+    background: #0073aa;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.aivs-last-search {
+    color: #646970;
+    font-size: 12px;
+    background: #f8f9fa;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.aivs-opportunity-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.add-product-btn {
+    background: #00a32a;
+    border-color: #008a20;
+    color: white;
+    flex: 1;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.add-product-btn:hover {
+    background: #008a20;
+    transform: translateY(-1px);
+}
+
+.search-existing-btn {
+    background: white;
+    border-color: #0073aa;
+    color: #0073aa;
+    flex: 1;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.search-existing-btn:hover {
+    background: #0073aa;
+    color: white;
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.aivs-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #646970;
+    background: #fafbfc;
+    border-radius: 12px;
+    border: 2px dashed #c3c4c7;
+}
+
+.aivs-empty-state h3 {
+    color: #1d2327;
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+.aivs-empty-state .dashicons {
+    font-size: 64px;
+    color: #c3c4c7;
+    margin-bottom: 20px;
+}
+
+.aivs-empty-state p {
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.aivs-empty-state .button {
+    background: #0073aa;
+    border-color: #005a8a;
+    color: white;
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+/* ==========================================================================
+   Filter Controls
+   ========================================================================== */
+
+.analytics-filters {
+    background: #f8f9fa;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.analytics-filters label {
+    font-weight: 600;
+    color: #1d2327;
+    margin-right: 8px;
+}
+
+.analytics-filters select {
+    padding: 6px 12px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    background: white;
+}
+
+.analytics-search-filter {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.analytics-search-filter input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ==========================================================================
+   Chart Containers (for future chart integration)
+   ========================================================================== */
+
+.analytics-chart {
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #646970;
+    position: relative;
+}
+
+.analytics-chart::before {
+    content: "📊";
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.analytics-chart::after {
+    content: "Chart will appear here";
+    position: absolute;
+    bottom: 40%;
+    font-size: 14px;
+    color: #c3c4c7;
+}
+
+.chart-placeholder {
+    text-align: center;
+    color: #646970;
+}
+
+/* ==========================================================================
+   Export Controls
+   ========================================================================== */
+
+.export-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.export-controls .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+}
+
+.export-controls .button:hover {
+    transform: translateY(-1px);
+}
+
+.export-csv-btn {
+    background: #00a32a;
+    border-color: #008a20;
+    color: white;
+}
+
+.export-pdf-btn {
+    background: #dc3232;
+    border-color: #b32d2e;
+    color: white;
+}
+
+.export-controls .dashicons {
+    font-size: 16px;
+}
+
+/* ==========================================================================
+   Real-time Indicators
+   ========================================================================== */
+
+.real-time-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #00a32a;
+    font-size: 12px;
+    margin-left: 10px;
+}
+
+.real-time-indicator::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: #00a32a;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.last-updated {
+    color: #646970;
+    font-size: 11px;
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Trend Indicators
+   ========================================================================== */
+
+.trend-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.trend-up {
+    color: #00a32a;
+}
+
+.trend-down {
+    color: #dc3232;
+}
+
+.trend-neutral {
+    color: #646970;
+}
+
+.trend-indicator::before {
+    font-size: 14px;
+}
+
+.trend-up::before { content: "↗"; }
+.trend-down::before { content: "↘"; }
+.trend-neutral::before { content: "→"; }
+
+/* ==========================================================================
+   Data Table Enhancements
+   ========================================================================== */
+
+.aivs-data-table {
+    width: 100%;
+    margin-top: 15px;
+    border-collapse: collapse;
+}
+
+.aivs-data-table th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    color: #1d2327;
+    font-weight: 600;
+    padding: 15px 12px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.aivs-data-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e1e5e9;
+    vertical-align: middle;
+}
+
+.aivs-data-table tbody tr {
+    transition: all 0.3s ease;
+}
+
+.aivs-data-table tbody tr:hover {
+    background: #f8f9fa;
+    transform: scale(1.01);
+}
+
+.aivs-data-table .numeric {
+    text-align: right;
+    font-family: 'SF Mono', Consolas, 'Liberation Mono', monospace;
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   Action Buttons in Tables
+   ========================================================================== */
+
+.table-action-btn {
+    background: none;
+    border: 1px solid #c3c4c7;
+    color: #50575e;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 600;
+}
+
+.table-action-btn:hover {
+    background: #0073aa;
+    color: white;
+    border-color: #0073aa;
+    transform: translateY(-1px);
+}
+
+.table-action-btn.danger:hover {
+    background: #dc3232;
+    border-color: #dc3232;
+}
+
+.table-action-btn.success:hover {
+    background: #00a32a;
+    border-color: #00a32a;
+}
+
+/* ==========================================================================
+   Quick Stats Bar
+   ========================================================================== */
+
+.quick-stats-bar {
+    display: flex;
+    gap: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 20px 0;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.quick-stat {
+    text-align: center;
+    flex: 1;
+    min-width: 120px;
+}
+
+.quick-stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.quick-stat-label {
+    font-size: 12px;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   Search Term Highlighting
+   ========================================================================== */
+
+.search-term-highlight {
+    background: #fff3cd;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+    border: 1px solid #ffeaa7;
+}
+
+.search-result mark {
+    background: #ffeb3b;
+    color: #1d2327;
+    padding: 1px 2px;
+    border-radius: 2px;
+}
+
+/* ==========================================================================
+   Pagination Controls
+   ========================================================================== */
+
+.analytics-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 30px 0;
+}
+
+.analytics-pagination .button {
+    min-width: 40px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.analytics-pagination .current-page {
+    background: #0073aa;
+    color: white;
+    border-color: #005a8a;
+}
+
+/* ==========================================================================
+   Loading Skeletons
+   ========================================================================== */
+
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+    height: 16px;
+    margin: 8px 0;
+}
+
+.skeleton-title {
+    height: 24px;
+    width: 60%;
+    margin: 12px 0;
+}
+
+.skeleton-stat {
+    height: 40px;
+    margin: 10px 0;
+}
+
+/* ==========================================================================
+   Keyboard Shortcuts Indicator
+   ========================================================================== */
+
+.keyboard-shortcut-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.keyboard-shortcut-hint.show {
+    opacity: 1;
+}
+
+.keyboard-shortcut-hint kbd {
+    background: #555;
+    border: 1px solid #777;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 10px;
+    margin: 0 2px;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .aivs-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .aivs-opportunity-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .search-results-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .analytics-filters {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .aivs-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .search-results-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aivs-section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .aivs-insight {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .aivs-insight-icon {
+        font-size: 32px;
+    }
+
+    .quick-stats-bar {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .export-controls {
+        flex-direction: column;
+    }
+
+    .analytics-pagination {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+}
+
+@media (max-width: 600px) {
+    .aivs-analytics-dashboard {
+        margin: 0 -10px;
+    }
+
+    .aivs-analytics-section {
+        margin: 15px 0;
+        padding: 15px;
+        border-radius: 8px;
+    }
+
+    .aivs-stat-card {
+        padding: 15px;
+    }
+
+    .aivs-stat-number {
+        font-size: 24px;
+    }
+
+    .aivs-opportunity-card {
+        padding: 15px;
+    }
+
+    .aivs-opportunity-actions {
+        flex-direction: column;
+    }
+
+    .search-preview-content {
+        margin: 10px;
+        max-width: calc(100vw - 20px);
+    }
+
+    .search-preview-header {
+        padding: 10px 15px;
+    }
+
+    .search-preview-body {
+        padding: 15px;
+    }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+    .aivs-analytics-dashboard {
+        box-shadow: none;
+    }
+
+    .export-controls,
+    .analytics-filters,
+    .search-preview-modal,
+    .table-action-btn,
+    .keyboard-shortcut-hint {
+        display: none !important;
+    }
+
+    .aivs-analytics-section {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+
+    .aivs-stat-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+
+    .search-results-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+}
+
+/* ==========================================================================
+   Dark Mode Support (Future Enhancement)
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+    .aivs-analytics-section {
+        background: #1e1e1e;
+        border-color: #444;
+        color: #e1e1e1;
+    }
+
+    .aivs-stat-card {
+        background: #2a2a2a;
+        border-color: #444;
+        color: #e1e1e1;
+    }
+
+    .search-preview-content {
+        background: #1e1e1e;
+        color: #e1e1e1;
+    }
+
+    .search-preview-header {
+        background: #2a2a2a;
+        border-color: #444;
+    }
+
+    .search-result-item {
+        background: #2a2a2a;
+        border-color: #444;
+        color: #e1e1e1;
+    }
+}
+
+/* ==========================================================================
+   Accessibility Enhancements
+   ========================================================================== */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: #0073aa;
+    color: white;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 0 0 4px 4px;
+    z-index: 100000;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Focus indicators */
+.aivs-analytics-dashboard *:focus {
+    outline: 2px solid #0073aa;
+    outline-offset: 2px;
+}
+
+.aivs-analytics-dashboard .button:focus {
+    box-shadow: 0 0 0 2px #0073aa;
+}

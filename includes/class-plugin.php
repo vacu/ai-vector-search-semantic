@@ -232,26 +232,18 @@ class AIVectorSearch_Plugin {
         echo '<div class="notice notice-info is-dismissible aivesese-welcome-notice">';
         echo '<h3>🎉 Welcome to AI Vector Search!</h3>';
         echo '<p>Thank you for installing AI Vector Search. You have two ways to get started:</p>';
-        echo '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">';
+        echo '<div class="connection-cards">';
 
         // API Option
-        echo '<div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0;">';
-        // echo '<div style="padding: 15px; border: 2px solid #0073aa; border-radius: 8px;">';
-        // echo '<h4 style="margin-top: 0;">🚀 Managed API Service (Recommended)</h4>';
-        echo '<h4 style="margin-top: 0;">🚀 Managed API Service (Coming Soon)</h4>';
-        // echo '<ul style="margin: 10px 0;">';
-        // echo '<li>✅ No setup required</li>';
-        // echo '<li>✅ Professional support</li>';
-        // echo '<li>✅ Automatic maintenance</li>';
-        // echo '<li>✅ Advanced analytics included</li>';
-        // echo '</ul>';
-        // echo '<p><a href="https://zzzsolutions.ro/ai-search-service" target="_blank" class="button button-primary">Get License Key</a></p>';
+        echo '<div class="api-option">';
+        echo '<h4>🚀 Managed API Service (Coming Soon)</h4>';
+        echo '<p><em>We\'re working on a hosted service that will eliminate setup complexity.</em></p>';
         echo '</div>';
 
         // Self-hosted Option
-        echo '<div style="padding: 15px; border: 2px solid #666; border-radius: 8px;">';
-        echo '<h4 style="margin-top: 0;">⚙️ Self-Hosted (DIY)</h4>';
-        echo '<ul style="margin: 10px 0;">';
+        echo '<div class="self-hosted-option">';
+        echo '<h4>⚙️ Self-Hosted (DIY)</h4>';
+        echo '<ul>';
         echo '<li>🔧 Requires Supabase setup</li>';
         echo '<li>🔧 Manual configuration</li>';
         echo '<li>💰 Pay only API usage</li>';
@@ -261,7 +253,7 @@ class AIVectorSearch_Plugin {
         echo '</div>';
 
         echo '</div>';
-        echo '<p><a href="' . esc_url($dismiss_url) . '" style="float: right; margin-top: 10px;">Dismiss this notice</a></p>';
+        echo '<p><a href="' . esc_url($dismiss_url) . '" class="dismiss-link">Dismiss this notice</a></p>';
         echo '</div>';
 
         // Handle dismissal
