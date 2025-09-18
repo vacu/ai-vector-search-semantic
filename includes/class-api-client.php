@@ -90,6 +90,18 @@ class AIVectorSearch_API_Client {
     }
 
     /**
+     * Fuzzy search via API
+     */
+    public function search_fuzzy(string $term, int $limit = 20): array {
+        $response = $this->request('POST', '/search/fuzzy', [
+            'term' => $term,
+            'limit' => $limit
+        ]);
+
+        return $this->parse_search_response($response);
+    }
+
+    /**
      * Semantic search via API
      */
     public function search_semantic(string $term, int $limit = 20, float $threshold = 0.5): array {
