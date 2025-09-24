@@ -77,6 +77,7 @@ class AIVectorSearch_Plugin {
         // Set default options
         $defaults = [
             'aivesese_connection_mode' => 'self_hosted', // Default to self-hosted
+            'aivesese_enable_search' => '1',
             'aivesese_semantic_toggle' => '0',
             'aivesese_auto_sync' => '0',
             'aivesese_enable_pdp_similar' => '0',

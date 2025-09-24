@@ -23,6 +23,10 @@ class AIVectorSearch_Search_Handler {
     }
 
     private function init_hooks() {
+        if (!$this->is_search_enabled()) {
+            return;
+        }
+
         // Regular WordPress search interception
         add_action('pre_get_posts', [$this, 'intercept_product_search'], 9999);
 
@@ -66,6 +70,11 @@ class AIVectorSearch_Search_Handler {
      * Handle Woodmart AJAX search with AI results and analytics
      */
     public function handle_woodmart_ajax_search() {
+        if (!$this->is_search_enabled()) {
+            wp_send_json(['suggestions' => []]);
+            return;
+        }
+
         $query = sanitize_text_field($_REQUEST['query'] ?? '');
         $number = intval($_REQUEST['number'] ?? 20);
 
@@ -202,6 +211,10 @@ class AIVectorSearch_Search_Handler {
      * Main search method
      */
     public function search_products(string $term, int $limit = 20): array {
+        if (!$this->is_search_enabled()) {
+            return [];
+        }
+
         $use_semantic = $this->should_use_semantic_search($term);
 
         if ($use_semantic) {
@@ -411,6 +424,10 @@ class AIVectorSearch_Search_Handler {
      * Public search API for external use
      */
     public function public_search(string $term, array $args = []): array {
+        if (!$this->is_search_enabled()) {
+            return [];
+        }
+
         $defaults = [
             'limit' => 20,
             'track' => true,
@@ -461,5 +478,12 @@ class AIVectorSearch_Search_Handler {
         $results['zero_results'] = $this->analytics->get_zero_result_searches(3, 7);
 
         return $results;
+    }
+
+    /**
+     * Determine if search features should be active
+     */
+    private function is_search_enabled(): bool {
+        return get_option('aivesese_enable_search', '1') === '1';
     }
 }

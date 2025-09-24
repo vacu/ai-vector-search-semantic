@@ -60,6 +60,7 @@ class AIVectorSearch_Admin_Interface {
             'postgres_connection_string' => 'PostgreSQL Connection String (for WP-CLI schema installation)',
 
             // Feature toggles
+            'enable_search' => 'Enable AI search',
             'semantic_toggle' => 'Enable semantic (vector) search',
             'auto_sync' => 'Auto-sync products on save',
             'enable_pdp_similar' => 'PDP "Similar products"',
@@ -98,7 +99,7 @@ class AIVectorSearch_Admin_Interface {
         }
 
         // Special handling for checkboxes
-        if (in_array($id, ['semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration'])) {
+        if (in_array($id, ['enable_search', 'semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration'])) {
             $config['sanitize_callback'] = function($v) { return $v === '1' ? '1' : '0'; };
             $config['default'] = $id === 'enable_woodmart_integration' ? '0' : '1';
         }
@@ -155,6 +156,7 @@ class AIVectorSearch_Admin_Interface {
 
         // Feature toggles
         $checkbox_fields = [
+            'enable_search' => 'Enable AI search - Use AI-powered results for store search',
             'semantic_toggle' => 'Enable semantic (vector) search - Better relevance',
             'auto_sync' => 'Auto-sync products - Automatically sync products when saved/updated',
             'enable_pdp_similar' => 'PDP "Similar products" - Show similar products on product pages',
@@ -538,6 +540,7 @@ class AIVectorSearch_Admin_Interface {
         $config_items = [
             'Store ID' => get_option('aivesese_store'),
             'Supabase URL' => get_option('aivesese_url'),
+            'AI Search' => get_option('aivesese_enable_search', '1') === '1' ? '✅ Enabled' : '❌ Disabled',
             'Semantic Search' => get_option('aivesese_semantic_toggle') === '1' ? '✅ Enabled' : '❌ Disabled',
             'OpenAI Key' => get_option('aivesese_openai') ? '✅ Configured' : '❌ Not set',
             'Woodmart Integration' => $this->get_woodmart_status(),

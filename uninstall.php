@@ -8,6 +8,7 @@ $opts = [
     'aivesese_key',
     'aivesese_store',
     'aivesese_openai',
+    'aivesese_enable_search',
     'aivesese_semantic_toggle',
     'aivesese_auto_sync',
     'aivesese_enable_pdp_similar',
