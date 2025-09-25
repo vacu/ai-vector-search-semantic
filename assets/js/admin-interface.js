@@ -21,12 +21,24 @@ class AIVectorSearchAdmin {
      */
     initConnectionModeToggle() {
         const radios = document.querySelectorAll('input[name="aivesese_connection_mode"]');
+        const optionLabels = document.querySelectorAll('.connection-mode-selector label.connection-option');
+
+        if (!radios.length) {
+            return;
+        }
 
         const toggleFields = () => {
             const mode = document.querySelector('input[name="aivesese_connection_mode"]:checked');
             if (!mode) return;
 
             const selectedMode = mode.value;
+
+            // Sync active styling on the cards
+            optionLabels.forEach(label => label.classList.remove('active'));
+            const activeLabel = mode.closest('label.connection-option');
+            if (activeLabel) {
+                activeLabel.classList.add('active');
+            }
 
             // Toggle license key field
             const licenseRow = document.querySelector('#aivesese_license_key');
@@ -49,6 +61,24 @@ class AIVectorSearchAdmin {
                 }
             });
 
+            // Hide options that are not available in Lite mode
+            const liteRestrictedFields = ['aivesese_semantic_toggle', 'aivesese_auto_sync'];
+            liteRestrictedFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field) {
+                    return;
+                }
+
+                const row = field.closest('tr');
+                if (!row) {
+                    return;
+                }
+
+                const isLite = selectedMode === 'lite';
+                row.style.display = isLite ? 'none' : 'table-row';
+                field.disabled = isLite;
+            });
+
             const liteModeSection = document.querySelector('.lite-mode-section');
             if (liteModeSection) {
                 liteModeSection.style.display = selectedMode === 'lite' ? 'block' : 'none';
@@ -60,6 +90,8 @@ class AIVectorSearchAdmin {
                 section.style.display = selectedMode === 'self_hosted' ? 'block' : 'none';
             });
         };
+
+        toggleFields();
 
         // Initial toggle with delay
         setTimeout(toggleFields, 100);
@@ -150,15 +182,20 @@ class AIVectorSearchAdmin {
         const helpDetails = document.getElementById('ai-supabase-help-details');
         if (!helpDetails) return;
 
-        helpDetails.addEventListener('toggle', () => {
-            if (!window.AISupabaseHelp) return;
+        const ajaxUrl = (window.AISupabaseHelp && window.AISupabaseHelp.ajax_url) || window.ajaxurl;
+        const nonce = (window.AISupabaseHelp && window.AISupabaseHelp.nonce) || window.aivesese_admin?.help_nonce;
 
+        if (!ajaxUrl || !nonce) {
+            return;
+        }
+
+        helpDetails.addEventListener('toggle', () => {
             const formData = new FormData();
             formData.append('action', 'aivesese_toggle_help');
             formData.append('open', helpDetails.open ? '1' : '0');
-            formData.append('nonce', window.AISupabaseHelp.nonce);
+            formData.append('nonce', nonce);
 
-            fetch(window.AISupabaseHelp.ajax_url, {
+            fetch(ajaxUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
                 body: formData
@@ -305,3 +342,4 @@ window.copyToClipboard = (text) => {
         alert('❌ Failed to copy to clipboard');
     });
 };
+
