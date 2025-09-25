@@ -47,6 +47,8 @@ require_once AIVESESE_PLUGIN_PATH . 'includes/class-recommendations.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-admin-interface.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-analytics.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-plugin.php';
+require_once AIVESESE_PLUGIN_PATH . 'includes/class-lite-engine.php';
+require_once AIVESESE_PLUGIN_PATH . 'includes/class-lite-mode-ajax.php';
 
 // Initialize the plugin
 function aivesese_init() {
