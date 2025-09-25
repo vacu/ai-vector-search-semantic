@@ -8,6 +8,7 @@ class AIVectorSearch_Admin_Interface {
     private $supabase_client;
     private $api_client;
     private $product_sync;
+    private $lite_engine;
 
     public static function instance() {
         if (self::$instance === null) {
@@ -20,6 +21,7 @@ class AIVectorSearch_Admin_Interface {
         $this->supabase_client = AIVectorSearch_Supabase_Client::instance();
         $this->api_client = AIVectorSearch_API_Client::instance();
         $this->product_sync = AIVectorSearch_Product_Sync::instance();
+        $this->lite_engine = AIVectorSearch_Lite_Engine::instance();
         $this->init_hooks();
     }
 
@@ -66,6 +68,7 @@ class AIVectorSearch_Admin_Interface {
             'enable_pdp_similar' => 'PDP "Similar products"',
             'enable_cart_below' => 'Below-cart recommendations',
             'enable_woodmart_integration' => 'Woodmart live search integration',
+            'lite_index_limit' => 'Lite Mode Index Limit',
         ];
 
         foreach ($settings as $id => $label) {
@@ -85,6 +88,7 @@ class AIVectorSearch_Admin_Interface {
             'store' => 'sanitize_text_field',
             'openai' => 'aivesese_passthru',
             'postgres_connection_string' => 'aivesese_passthru', // Will be encrypted
+            'lite_index_limit' => 'absint',
         ];
 
         $config = [
@@ -95,7 +99,12 @@ class AIVectorSearch_Admin_Interface {
 
         // Special handling for connection mode
         if ($id === 'connection_mode') {
-            $config['default'] = 'self_hosted';
+            $config['default'] = 'lite';
+        }
+
+        if ($id === 'lite_index_limit') {
+            $config['type'] = 'integer';
+            $config['default'] = 500;
         }
 
         // Special handling for checkboxes
@@ -178,9 +187,9 @@ class AIVectorSearch_Admin_Interface {
 
     public function render_connection_mode_field() {
         // Use templated selector instead of inline HTML
-        $current_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $current_mode = get_option('aivesese_connection_mode', 'lite');
         $api_available = false; // Flip when API service is live
-        $this->load_template('connection-mode-selector', compact('current_mode', 'api_available'));
+        $this->load_template('connection-mode-selector-with-lite', compact('current_mode', 'api_available'));
         return;
     }
 
@@ -268,16 +277,18 @@ class AIVectorSearch_Admin_Interface {
      * Enhanced settings page with custom field rendering
      */
     public function render_settings_page() {
-        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
         echo '<div class="wrap aivesese-admin aivesese-mode-' . esc_attr($connection_mode) . '">';
         echo '<h1>' . esc_html__('AI Vector Search Settings', 'ai-vector-search-semantic') . '</h1>';
 
         // Show different descriptions based on mode
         if ($connection_mode === 'api') {
-            echo '<p>You are using our managed API service. No additional setup required!</p>';
+            echo '<p>' . esc_html__('You are using our managed API service. No additional setup required!', 'ai-vector-search-semantic') . '</p>';
+        } elseif ($connection_mode === 'lite') {
+            echo '<p>' . esc_html__('Lite mode runs locally. Configure the search engine options below.', 'ai-vector-search-semantic') . '</p>';
         } else {
-            echo '<p>Configure your own Supabase project and optionally enable semantic search using OpenAI.</p>';
+            echo '<p>' . esc_html__('Configure your own Supabase project and optionally enable semantic search using OpenAI.', 'ai-vector-search-semantic') . '</p>';
         }
 
         // Show help section only for self-hosted mode
@@ -288,6 +299,13 @@ class AIVectorSearch_Admin_Interface {
         echo '<form method="post" action="options.php">';
         settings_fields('aivesese_settings');
         do_settings_sections('aivesese');
+
+        if ($connection_mode === 'lite') {
+            echo '<div class="lite-mode-section">';
+            $this->load_template('lite-mode-config');
+            echo '</div>';
+        }
+
         submit_button();
         echo '</form>';
 
@@ -317,10 +335,12 @@ class AIVectorSearch_Admin_Interface {
         echo '<div class="wrap aivesese-admin">';
         echo '<h1>' . esc_html__('AI Vector Search Status', 'ai-vector-search-semantic') . '</h1>';
 
-        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
         if ($connection_mode === 'api') {
             $this->render_api_status();
+        } elseif ($connection_mode === 'lite') {
+            $this->render_lite_status();
         } else {
             $this->render_self_hosted_status();
         }
@@ -421,6 +441,38 @@ class AIVectorSearch_Admin_Interface {
         $this->render_quick_actions();
     }
 
+    private function render_lite_status() {
+        $stats = $this->lite_engine ? $this->lite_engine->get_index_stats() : ['indexed_products' => 0, 'total_terms' => 0, 'last_built' => 0];
+        $limit_option = get_option('aivesese_lite_index_limit', '500');
+        $limit_value = is_numeric($limit_option) ? (int) $limit_option : 0;
+
+        if ($limit_value <= 0) {
+            $limit_label = esc_html__('All products', 'ai-vector-search-semantic');
+        } else {
+            $limit_label = sprintf(
+                esc_html__('Latest %s products', 'ai-vector-search-semantic'),
+                number_format_i18n($limit_value)
+            );
+        }
+
+        $last_built = !empty($stats['last_built'])
+            ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), (int) $stats['last_built'])
+            : esc_html__('Not built yet', 'ai-vector-search-semantic');
+
+        echo '<div class="notice notice-info"><p>' . esc_html__('Lite mode is active. Your search index runs locally without Supabase or OpenAI configuration.', 'ai-vector-search-semantic') . '</p></div>';
+
+        echo '<table class="widefat striped aivs-data-table">';
+        echo '<tbody>';
+        echo '<tr><th>' . esc_html__('Products Indexed', 'ai-vector-search-semantic') . '</th><td>' . number_format_i18n((int) ($stats['indexed_products'] ?? 0)) . '</td></tr>';
+        echo '<tr><th>' . esc_html__('Unique Terms', 'ai-vector-search-semantic') . '</th><td>' . number_format_i18n((int) ($stats['total_terms'] ?? 0)) . '</td></tr>';
+        echo '<tr><th>' . esc_html__('Index Limit', 'ai-vector-search-semantic') . '</th><td>' . esc_html($limit_label) . '</td></tr>';
+        echo '<tr><th>' . esc_html__('Last Rebuild', 'ai-vector-search-semantic') . '</th><td>' . esc_html($last_built) . '</td></tr>';
+        echo '</tbody></table>';
+
+        echo '<p><a class="button button-primary" href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '">' . esc_html__('Manage Lite settings', 'ai-vector-search-semantic') . '</a></p>';
+    }
+
+
     public function add_admin_pages() {
         add_options_page(
             'AI Supabase',
@@ -449,9 +501,18 @@ class AIVectorSearch_Admin_Interface {
         );
     }
 
+
     public function render_sync_page() {
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Sync Products to Supabase', 'ai-vector-search-semantic') . '</h1>';
+
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
+        if ($connection_mode === 'lite') {
+            echo '<div class="notice notice-info"><p>' . esc_html__('Lite mode manages its search index automatically. No Supabase sync is required.', 'ai-vector-search-semantic') . '</p></div>';
+            echo '<p><a class="button button-primary" href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '">' . esc_html__('Manage Lite settings', 'ai-vector-search-semantic') . '</a></p>';
+            echo '</div>';
+            return;
+        }
 
         if (!$this->is_configured()) {
             $this->render_configuration_error();
@@ -466,6 +527,11 @@ class AIVectorSearch_Admin_Interface {
     }
 
     private function is_configured(): bool {
+        $mode = get_option('aivesese_connection_mode', 'lite');
+        if ($mode === 'lite') {
+            return true;
+        }
+
         return get_option('aivesese_store') &&
                get_option('aivesese_url') &&
                get_option('aivesese_key');
@@ -839,7 +905,7 @@ class AIVectorSearch_Admin_Interface {
     }
 
     private function render_sql_section() {
-        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
         if ($connection_mode !== 'self_hosted') {
             return; // Don't show SQL section for API mode
@@ -943,7 +1009,7 @@ class AIVectorSearch_Admin_Interface {
      * Add conditional inline styles (minimal, only when necessary)
      */
     private function add_conditional_styles($current_page) {
-        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
         // Add body class-based styles for connection mode
         $inline_css = "
@@ -1125,7 +1191,7 @@ class AIVectorSearch_Admin_Interface {
      * Render PostgreSQL connection string field
      */
     public function render_postgres_connection_field() {
-        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
         $value = get_option('aivesese_postgres_connection_string');
         $has_value = !empty($value);
 
@@ -1284,7 +1350,7 @@ class AIVectorSearch_Admin_Interface {
     public function add_admin_body_class($classes) {
         $screen = get_current_screen();
         if ($screen && strpos($screen->id, 'aivesese') !== false) {
-            $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+            $connection_mode = get_option('aivesese_connection_mode', 'lite');
             $classes .= ' aivesese-admin aivesese-mode-' . $connection_mode;
         }
         return $classes;

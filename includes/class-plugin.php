@@ -76,7 +76,7 @@ class AIVectorSearch_Plugin {
 
         // Set default options
         $defaults = [
-            'aivesese_connection_mode' => 'self_hosted', // Default to self-hosted
+            'aivesese_connection_mode' => 'lite', // Default to lite mode for instant search
             'aivesese_enable_search' => '1',
             'aivesese_semantic_toggle' => '0',
             'aivesese_auto_sync' => '0',
@@ -138,7 +138,7 @@ class AIVectorSearch_Plugin {
         }
 
         // Connection mode notices
-        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
         if ($connection_mode === 'api' && empty(get_option('aivesese_license_key'))) {
             $this->show_api_setup_notice();
@@ -342,23 +342,28 @@ class AIVectorSearch_Plugin {
      * Check if the plugin is properly configured
      */
     public function is_configured(): bool {
-        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
+
 
         if ($connection_mode === 'api') {
             return !empty(get_option('aivesese_license_key')) &&
                    get_option('aivesese_api_activated') === '1';
-        } else {
-            return !empty(get_option('aivesese_url')) &&
-                   !empty(get_option('aivesese_key')) &&
-                   !empty(get_option('aivesese_store'));
         }
+
+        if ($connection_mode === 'lite') {
+            return true;
+        }
+
+        return !empty(get_option('aivesese_url')) &&
+               !empty(get_option('aivesese_key')) &&
+               !empty(get_option('aivesese_store'));
     }
 
     /**
      * Get current connection mode
      */
     public function get_connection_mode(): string {
-        return get_option('aivesese_connection_mode', 'self_hosted');
+        return get_option('aivesese_connection_mode', 'lite');
     }
 
     /**

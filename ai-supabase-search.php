@@ -109,7 +109,7 @@ add_action('admin_notices', function() {
 
 // Add plugin action links
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) {
-    $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+    $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
     $settings_link = '<a href="' . admin_url('options-general.php?page=aivesese') . '">Settings</a>';
     $status_link = '<a href="' . admin_url('options-general.php?page=aivesese-status') . '">Status</a>';
@@ -124,6 +124,8 @@ add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) 
 
     if ($connection_mode === 'api') {
         $mode_indicator = '<span style="color: #0073aa; font-weight: bold;">API Mode</span>';
+    } elseif ($connection_mode === 'lite') {
+        $mode_indicator = '<span style="color: #00a32a; font-weight: bold;">Lite Mode</span>';
     } else {
         $mode_indicator = '<span style="color: #666;">Self-Hosted</span>';
     }
@@ -155,7 +157,7 @@ add_filter('plugin_row_meta', function($links, $file) {
 add_filter('admin_body_class', function($classes) {
     $screen = get_current_screen();
     if ($screen && strpos($screen->id, 'aivesese') !== false) {
-        $connection_mode = get_option('aivesese_connection_mode', 'self_hosted');
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
         $classes .= ' aivesese-admin aivesese-mode-' . $connection_mode;
     }
     return $classes;

@@ -90,7 +90,18 @@
 .postgres-unavailable {
     border-color: #ffc107;
     background: #fffbf0;
-    opacity: 0.8;
+}
+
+.postgres-unavailable .notice {
+    background-color: #fff4d0;
+    border-color: #f0c36d;
+    color: #5c3d00;
+}
+
+.postgres-unavailable .notice p,
+.postgres-unavailable .notice strong,
+.postgres-unavailable .notice li {
+    color: inherit;
 }
 
 .postgres-unavailable h3 {
@@ -101,10 +112,19 @@
 .manual-option {
     border-color: #6c757d;
     background: #f8f9fa;
+    color: #1d2327;
 }
 
 .manual-option h3 {
     color: #495057;
+}
+
+.manual-option p,
+.manual-option li,
+.manual-option summary,
+.manual-option strong,
+.manual-option a {
+    color: inherit;
 }
 
 /* ==========================================================================
@@ -894,11 +914,13 @@
    ========================================================================== */
 
 .installation-mode-postgres .manual-option {
-    opacity: 0.7;
+    background: #f1f2f4;
+    border-color: #d3d7dd;
 }
 
 .installation-mode-manual .postgres-option {
-    opacity: 0.7;
+    background: linear-gradient(135deg, #f3f8ff 0%, #e6f0fb 100%);
+    border-color: #c5d9ea;
 }
 
 /* ==========================================================================
@@ -909,7 +931,66 @@
     .installation-option {
         background: #1e1e1e;
         border-color: #444;
-        color: #e1e1e1;
+        color: #f1f5f9;
+    }
+
+    .manual-option {
+        border-color: #3a3f45;
+    }
+
+    .manual-option p,
+    .manual-option li,
+    .manual-option summary,
+    .manual-option strong,
+    .manual-option a {
+        color: #f1f5f9;
+    }
+
+    .manual-toggle {
+        background: #2b2f33;
+        border-color: #3a3f45;
+        color: #f8fafc;
+    }
+
+    .manual-toggle:hover {
+        background: #353941;
+    }
+
+    .manual-benefits ul {
+        background: rgba(43, 47, 51, 0.85);
+        border: 1px solid #3a3f45;
+    }
+
+    .manual-benefits li::before {
+        color: #38d39f;
+    }
+
+    .manual-steps {
+        background: #2b2f33;
+        border-color: #3a3f45;
+    }
+
+    .manual-steps h4,
+    .manual-steps strong {
+        color: #f8fafc;
+    }
+
+    .manual-steps li {
+        color: #e2e8f0;
+    }
+
+    .sql-info {
+        background: rgba(35, 38, 43, 0.85);
+        border: 1px solid #3a3f45;
+        border-radius: 8px;
+    }
+
+    .sql-features .sql-feature {
+        color: #e2e8f0;
+    }
+
+    .sql-features .feature-icon {
+        color: #38d39f;
     }
 
     .postgres-option {
@@ -923,7 +1004,22 @@
 
     #manual-sql-content {
         background: #0d1117;
-        color: #e1e1e1;
+        color: #f1f5f9;
         border-color: #21262d;
     }
+
+    .copy-status.success {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: #0f5132;
+        color: #6ee7b7;
+    }
+
+    .copy-status.error {
+        background: rgba(239, 68, 68, 0.15);
+        border-color: #7f1d1d;
+        color: #fca5a5;
+    }
 }
+
+
+

@@ -49,6 +49,11 @@ class AIVectorSearchAdmin {
                 }
             });
 
+            const liteModeSection = document.querySelector('.lite-mode-section');
+            if (liteModeSection) {
+                liteModeSection.style.display = selectedMode === 'lite' ? 'block' : 'none';
+            }
+
             // Show/hide help sections
             const helpSections = document.querySelectorAll('.ai-supabase-help');
             helpSections.forEach(section => {
