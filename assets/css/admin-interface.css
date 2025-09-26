@@ -1050,3 +1050,46 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     display: flex;
     flex-direction: column;
 }
+
+/* ==========================================================================
+   Setup Instructions
+   ========================================================================== */
+
+.setup-flow {
+    margin: 20px 0;
+}
+
+.setup-step {
+    margin: 25px 0;
+    padding: 20px;
+    background: #fafafa;
+    border-left: 4px solid #0073aa;
+    border-radius: 0 8px 8px 0;
+}
+
+.setup-step h3 {
+    margin-top: 0;
+    color: #0073aa;
+}
+
+.setup-step code {
+    background: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+}
+
+.setup-notice {
+    margin: 15px 0;
+}
+
+.setup-cli-list {
+    margin: 10px 0 0 20px;
+    list-style: disc;
+}
+
+.setup-cli-list li {
+    margin: 4px 0;
+}
+
+

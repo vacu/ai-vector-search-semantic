@@ -195,7 +195,8 @@ class AIVectorSearch_Search_Handler {
 
         if (empty($product_ids)) {
             if ($is_ajax_search) {
-                $query->set('post__in', [0]); // Force no results
+                // $query->set('post__in', [0]); // Force no results
+                return;
             }
             return;
         }

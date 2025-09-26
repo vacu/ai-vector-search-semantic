@@ -818,92 +818,14 @@ class AIVectorSearch_Admin_Interface {
     }
 
     private function render_setup_instructions() {
-        echo '<div class="setup-flow">';
+        $template = AIVESESE_PLUGIN_PATH . 'assets/templates/setup-instructions.php';
 
-        // Step 1: Supabase Setup
-        echo '<div class="setup-step">';
-        echo '<h3>🚀 Step 1: Create Your Supabase Project</h3>';
-        echo '<ol>';
-        echo '<li>Go to <a href="https://app.supabase.io/" target="_blank" rel="noopener">supabase.com</a> and create a free account</li>';
-        echo '<li>Click "New Project" and choose your organization</li>';
-        echo '<li>Set a project name and strong database password</li>';
-        echo '<li>Choose a region close to your users</li>';
-        echo '<li>Wait 2-3 minutes for project setup to complete</li>';
-        echo '</ol>';
-        echo '</div>';
-
-        // Step 2: Get Credentials
-        echo '<div class="setup-step">';
-        echo '<h3>🔑 Step 2: Get Your API Credentials</h3>';
-        echo '<ol>';
-        echo '<li>In your Supabase project, go to <strong>Settings → API</strong></li>';
-        echo '<li>Copy your <strong>Project URL</strong> (looks like: <code>https://xyz.supabase.co</code>)</li>';
-        echo '<li>Copy your <strong>service_role</strong> key from "Project API keys" section</li>';
-        echo '<li>Paste both values in the configuration form above ⬆️</li>';
-        echo '</ol>';
-        echo '</div>';
-
-        // Step 3: PostgreSQL Connection (NEW)
-        echo '<div class="setup-step">';
-        echo '<h3>🔗 Step 3: Get PostgreSQL Connection String (for WP-CLI)</h3>';
-        echo '<ol>';
-        echo '<li>In your Supabase project, go to <strong>Settings → Database</strong></li>';
-        echo '<li>Scroll down to <strong>"Connection parameters"</strong></li>';
-        echo '<li>Copy the <strong>"Connection string"</strong> in URI format</li>';
-        echo '<li>Paste it in the PostgreSQL Connection String field above ⬆️</li>';
-        echo '</ol>';
-        echo '<div class="notice notice-info inline" style="margin: 15px 0;">';
-        echo '<p><strong>💡 Why PostgreSQL connection?</strong> This enables professional WP-CLI commands for reliable schema installation:</p>';
-        echo '<ul style="margin-left: 20px;">';
-        echo '<li><code>wp aivs install-schema</code> - One-command schema installation</li>';
-        echo '<li><code>wp aivs sync-products</code> - Bulk product synchronization</li>';
-        echo '<li><code>wp aivs check-schema</code> - Comprehensive status checking</li>';
-        echo '</ul>';
-        echo '</div>';
-        echo '</div>';
-
-        // Step 4: OpenAI (Optional)
-        echo '<div class="setup-step">';
-        echo '<h3>🤖 Step 4: OpenAI Setup (Optional)</h3>';
-        echo '<p>For AI semantic search, you\'ll need an OpenAI API key:</p>';
-        echo '<ol>';
-        echo '<li>Visit <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI API Keys</a></li>';
-        echo '<li>Create a new API key</li>';
-        echo '<li>Add billing information (required for API usage)</li>';
-        echo '<li>Paste the key in the OpenAI field above ⬆️</li>';
-        echo '</ol>';
-        echo '<div class="notice notice-warning inline" style="margin: 15px 0;">';
-        echo '<p><strong>💰 Cost:</strong> Embeddings cost ~$0.05-$1.00 per 1,000 products (one-time setup cost)</p>';
-        echo '</div>';
-        echo '</div>';
-
-        echo '</div>'; // close setup-flow
-
-        // Add some styling
-        echo '<style>
-        .setup-flow {
-            margin: 20px 0;
+        if (! file_exists($template)) {
+            return;
         }
-        .setup-step {
-            margin: 25px 0;
-            padding: 20px;
-            background: #fafafa;
-            border-left: 4px solid #0073aa;
-            border-radius: 0 8px 8px 0;
-        }
-        .setup-step h3 {
-            margin-top: 0;
-            color: #0073aa;
-        }
-        .setup-step code {
-            background: #fff;
-            padding: 2px 6px;
-            border-radius: 3px;
-            border: 1px solid #ddd;
-        }
-        </style>';
+
+        include $template;
     }
-
     private function render_sql_section() {
         $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
@@ -1397,3 +1319,4 @@ class AIVectorSearch_Admin_Interface {
         return $fallback_content;
     }
 }
+
