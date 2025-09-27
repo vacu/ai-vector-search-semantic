@@ -4,7 +4,7 @@ Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable Tag: 0.17.0
+Stable Tag: 0.18.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -191,7 +191,14 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Changelog ==
 
-= 0.17.0 (Latest) =
+= 0.18.0 (Latest) =
+* **New:** Lite Mode local TF-IDF search with configurable stopwords, synonym expansion, scheduled re-indexing, and upgrade guidance for stores that want zero external services
+* **New:** Search enable/disable toggle so merchants can fall back to default WooCommerce search without disabling the plugin, plus Lite Mode defaults on fresh installs
+* **New:** Fuzzy matching fallback across Lite, API, and self-hosted modes to reduce zero-result searches and surface partial matches
+* **Update:** Analytics engine now sanitises input, caches recent results, secures CSV export with nonces, and invalidates caches on data changes for faster, safer reporting
+* **Fix:** Lite Mode AJAX endpoints, synonym/stopword sanitisation, and uninstall cleanup ensure consistent local search behaviour and remove scheduled jobs/transients on uninstall
+
+= 0.17.0 =
 **Major Architectural Improvements:**
 * **New:** Modular asset structure with separate CSS, JS, and template files
 * **New:** Template system for better customization
@@ -300,7 +307,14 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Upgrade Notice ==
 
-= 0.17.0 (Latest) =
+= 0.18.0 (Latest) =
+* **New:** Lite Mode local TF-IDF search with configurable stopwords, synonym expansion, scheduled re-indexing, and upgrade guidance for stores that want zero external services
+* **New:** Search enable/disable toggle so merchants can fall back to default WooCommerce search without disabling the plugin, plus Lite Mode defaults on fresh installs
+* **New:** Fuzzy matching fallback across Lite, API, and self-hosted modes to reduce zero-result searches and surface partial matches
+* **Update:** Analytics engine now sanitises input, caches recent results, secures CSV export with nonces, and invalidates caches on data changes for faster, safer reporting
+* **Fix:** Lite Mode AJAX endpoints, synonym/stopword sanitisation, and uninstall cleanup ensure consistent local search behaviour and remove scheduled jobs/transients on uninstall
+
+= 0.17.0 =
 **Major Architectural Improvements:**
 * **New:** Modular asset structure with separate CSS, JS, and template files
 * **New:** Template system for better customization

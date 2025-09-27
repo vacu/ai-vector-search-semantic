@@ -10,14 +10,14 @@
  * Requires at least: 6.0
  * Tested up to: 6.8
  * Requires PHP: 7.4
- * Stable Tag: 0.17.0
+ * Stable Tag: 0.18.0
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIVESESE_PLUGIN_VERSION', '0.17.0');
+define('AIVESESE_PLUGIN_VERSION', '0.18.0');
 define('AIVESESE_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('AIVESESE_PLUGIN_URL', plugin_dir_url(__FILE__));
 
