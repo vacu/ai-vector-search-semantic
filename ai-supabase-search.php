@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Vector Search (Semantic)
  * Description: Supabase‑powered WooCommerce search with optional semantic matching, live‑search support, and product recommendation.
- * Version: 0.18.0
+ * Version: 0.18.1
  * Author: ZZZ Solutions
  * License: GPLv2 or later
  * Text Domain: ai-vector-search-semantic
@@ -10,7 +10,7 @@
  * Requires at least: 6.0
  * Tested up to: 6.8
  * Requires PHP: 7.4
- * Stable Tag: 0.18.0
+ * Stable Tag: 0.18.1
  */
 
 if (!defined('ABSPATH')) {
