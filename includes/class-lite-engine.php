@@ -284,15 +284,19 @@ class AIVectorSearch_Lite_Engine {
         $scores = [];
 
         foreach ($search_tokens as $token) {
-            if (!isset($index['terms'][$token])) {
+            $matching_terms = $this->find_matching_index_terms($token, $index['terms']);
+
+            if (empty($matching_terms)) {
                 continue;
             }
 
-            foreach ($index['terms'][$token] as $doc_id => $tfidf_score) {
-                if (!isset($scores[$doc_id])) {
-                    $scores[$doc_id] = 0;
+            foreach ($matching_terms as $matched_term => $weight) {
+                foreach ($index['terms'][$matched_term] as $doc_id => $tfidf_score) {
+                    if (!isset($scores[$doc_id])) {
+                        $scores[$doc_id] = 0;
+                    }
+                    $scores[$doc_id] += $tfidf_score * $weight;
                 }
-                $scores[$doc_id] += $tfidf_score;
             }
         }
 
@@ -334,6 +338,34 @@ class AIVectorSearch_Lite_Engine {
         }
 
         return $scores;
+    }
+
+    /**
+     * Find index terms that match (exactly or partially) a search token
+     */
+    private function find_matching_index_terms(string $token, array $index_terms): array {
+        $matches = [];
+
+        if (isset($index_terms[$token])) {
+            $matches[$token] = 1.0;
+        }
+
+        // Support prefix matching for longer tokens when exact matches are missing.
+        if (strlen($token) >= 3) {
+            foreach ($index_terms as $term => $documents) {
+                if ($term === $token) {
+                    continue;
+                }
+
+                if (strpos($term, $token) === 0) {
+                    // Down-rank partial matches so exact hits stay ahead.
+                    $length_ratio = strlen($token) / max(strlen($term), 1);
+                    $matches[$term] = max(0.5, $length_ratio);
+                }
+            }
+        }
+
+        return $matches;
     }
 
     /**
