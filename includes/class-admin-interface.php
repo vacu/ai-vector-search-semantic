@@ -69,6 +69,8 @@ class AIVectorSearch_Admin_Interface {
             'enable_cart_below' => 'Below-cart recommendations',
             'enable_woodmart_integration' => 'Woodmart live search integration',
             'lite_index_limit' => 'Lite Mode Index Limit',
+            'lite_stopwords' => 'Lite Mode Stopwords',
+            'lite_synonyms' => 'Lite Mode Synonyms',
         ];
 
         foreach ($settings as $id => $label) {
@@ -89,6 +91,8 @@ class AIVectorSearch_Admin_Interface {
             'openai' => 'aivesese_passthru',
             'postgres_connection_string' => 'aivesese_passthru', // Will be encrypted
             'lite_index_limit' => 'absint',
+            'lite_stopwords' => [$this, 'sanitize_lite_stopwords'],
+            'lite_synonyms' => [$this, 'sanitize_lite_synonyms'],
         ];
 
         $config = [
@@ -114,6 +118,22 @@ class AIVectorSearch_Admin_Interface {
         }
 
         register_setting('aivesese_settings', "aivesese_{$id}", $config);
+    }
+
+    private function sanitize_lite_stopwords($value): string {
+        if (!is_string($value)) {
+            return '';
+        }
+
+        return sanitize_textarea_field(wp_unslash($value));
+    }
+
+    private function sanitize_lite_synonyms($value): string {
+        if (!is_string($value)) {
+            return '';
+        }
+
+        return sanitize_textarea_field(wp_unslash($value));
     }
 
     private function add_settings_fields() {
@@ -1319,4 +1339,3 @@ class AIVectorSearch_Admin_Interface {
         return $fallback_content;
     }
 }
-

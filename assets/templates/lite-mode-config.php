@@ -10,6 +10,11 @@ $connection_manager = AIVectorSearch_Connection_Manager::instance();
 $lite_engine = AIVectorSearch_Lite_Engine::instance();
 $config_summary = $connection_manager->get_config_summary();
 $index_stats = $lite_engine->get_index_stats();
+$stopwords_option = get_option('aivesese_lite_stopwords', null);
+$stopwords_value = $stopwords_option === null ? implode("\n", $lite_engine->get_builtin_stopwords()) : $stopwords_option;
+
+$synonyms_option = get_option('aivesese_lite_synonyms', null);
+$synonyms_value = $synonyms_option === null ? $lite_engine->format_synonyms_for_editor($lite_engine->get_builtin_synonyms()) : $synonyms_option;
 $upgrade_suggestions = $connection_manager->get_upgrade_suggestions();
 ?>
 
@@ -70,6 +75,24 @@ $upgrade_suggestions = $connection_manager->get_upgrade_suggestions();
                         Choose how many products to include in your local search index.
                         More products = better coverage but potentially slower performance.
                     </p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">
+                    <label for="aivesese_lite_stopwords"><?php esc_html_e('Stopwords', 'ai-vector-search-semantic'); ?></label>
+                </th>
+                <td>
+                    <textarea name="aivesese_lite_stopwords" id="aivesese_lite_stopwords" rows="8" class="large-text code"><?php echo esc_textarea($stopwords_value); ?></textarea>
+                    <p class="description"><?php esc_html_e('Add one term per line. Lines starting with # are treated as comments. Leave empty to disable stopword filtering.', 'ai-vector-search-semantic'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">
+                    <label for="aivesese_lite_synonyms"><?php esc_html_e('Synonym Map', 'ai-vector-search-semantic'); ?></label>
+                </th>
+                <td>
+                    <textarea name="aivesese_lite_synonyms" id="aivesese_lite_synonyms" rows="10" class="large-text code"><?php echo esc_textarea($synonyms_value); ?></textarea>
+                    <p class="description"><?php esc_html_e('Use the format term: synonym1, synonym2 (one per line). Leave empty to disable synonym expansion.', 'ai-vector-search-semantic'); ?></p>
                 </td>
             </tr>
         </table>

@@ -30,6 +30,8 @@ class AIVectorSearch_Lite_Engine {
 
         // Cron job for periodic index rebuilds
         add_action('aivesese_rebuild_lite_index', [$this, 'rebuild_full_index']);
+        add_action('update_option_aivesese_lite_stopwords', [$this, 'handle_lite_settings_update'], 10, 3);
+        add_action('update_option_aivesese_lite_synonyms', [$this, 'handle_lite_settings_update'], 10, 3);
 
         // Schedule cron if not already scheduled
         if (!wp_next_scheduled('aivesese_rebuild_lite_index')) {
@@ -420,7 +422,104 @@ class AIVectorSearch_Lite_Engine {
      * Load stopwords
      */
     private function load_stopwords() {
-        $this->stopwords = [
+        $raw = get_option('aivesese_lite_stopwords', null);
+
+        if ($raw === null) {
+            $this->stopwords = $this->get_default_stopwords();
+            return;
+        }
+
+        $this->stopwords = $this->parse_stopwords_string($raw);
+    }
+
+    /**
+     * Load synonyms
+     */
+    private function load_synonyms() {
+        $raw = get_option('aivesese_lite_synonyms', null);
+
+        if ($raw === null) {
+            $this->synonyms = $this->get_default_synonyms();
+            return;
+        }
+
+        $this->synonyms = $this->parse_synonyms_string($raw);
+    }
+
+    /**
+     * Handle stopword/synonym option updates from the admin interface.
+     */
+    public function handle_lite_settings_update($old_value, $value, $option) {
+        if ($old_value === $value) {
+            return;
+        }
+
+        if ($option === 'aivesese_lite_stopwords') {
+            $this->load_stopwords();
+            $this->clear_index_cache();
+            return;
+        }
+
+        if ($option === 'aivesese_lite_synonyms') {
+            $this->load_synonyms();
+        }
+    }
+
+    /**
+     * Expose the bundled stopwords for configuration UIs.
+     */
+    public function get_builtin_stopwords(): array {
+        return $this->get_default_stopwords();
+    }
+
+    /**
+     * Expose the bundled synonyms for configuration UIs.
+     */
+    public function get_builtin_synonyms(): array {
+        return $this->get_default_synonyms();
+    }
+
+    /**
+     * Helper to format synonyms as editable lines (term: synonym, synonym).
+     */
+    public function format_synonyms_for_editor(array $synonyms): string {
+        if (empty($synonyms)) {
+            return '';
+        }
+
+        ksort($synonyms, SORT_NATURAL | SORT_FLAG_CASE);
+
+        $lines = [];
+        foreach ($synonyms as $term => $alternatives) {
+            if (empty($alternatives)) {
+                continue;
+            }
+
+            $term = strtolower(trim((string) $term));
+            $processed = [];
+            foreach ($alternatives as $alt) {
+                $alt = strtolower(trim((string) $alt));
+                if ($alt === '') {
+                    continue;
+                }
+                $processed[$alt] = true;
+            }
+
+            if (empty($processed)) {
+                continue;
+            }
+
+            $lines[] = $term . ': ' . implode(', ', array_keys($processed));
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Retrieve the plugin's bundled stopwords list.
+     */
+    private function get_default_stopwords(): array {
+        return [
             // English stopwords
             'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
             'has', 'he', 'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the',
@@ -432,10 +531,10 @@ class AIVectorSearch_Lite_Engine {
     }
 
     /**
-     * Load synonyms
+     * Retrieve the plugin's bundled synonym map.
      */
-    private function load_synonyms() {
-        $this->synonyms = [
+    private function get_default_synonyms(): array {
+        return [
             // English synonyms
             'phone' => ['mobile', 'smartphone', 'cell'],
             'laptop' => ['notebook', 'computer'],
@@ -448,6 +547,114 @@ class AIVectorSearch_Lite_Engine {
             'televizor' => ['tv', 'monitor'],
             'pantofi' => ['incaltaminte', 'adidasi']
         ];
+    }
+
+    /**
+     * Convert a raw textarea string into a stopword array.
+     */
+    private function parse_stopwords_string($value): array {
+        if (!is_string($value)) {
+            return [];
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return [];
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $value);
+        $stopwords = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            if ($line === '' || strpos($line, '#') === 0 || strpos($line, '//') === 0) {
+                continue;
+            }
+
+            $parts = preg_split('/[,;]+/', $line);
+            foreach ($parts as $part) {
+                $part = strtolower(trim($part));
+                if ($part === '') {
+                    continue;
+                }
+                $stopwords[$part] = true;
+            }
+        }
+
+        return array_keys($stopwords);
+    }
+
+    /**
+     * Convert a raw textarea string into a synonym map.
+     */
+    private function parse_synonyms_string($value): array {
+        if (!is_string($value)) {
+            return [];
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return [];
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $value);
+        $synonyms = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            if ($line === '' || strpos($line, '#') === 0 || strpos($line, '//') === 0) {
+                continue;
+            }
+
+            $delimiter = null;
+            foreach (['=>', ':', '='] as $candidate) {
+                $pos = strpos($line, $candidate);
+                if ($pos !== false) {
+                    $delimiter = $candidate;
+                    break;
+                }
+            }
+
+            if ($delimiter === null) {
+                continue;
+            }
+
+            $pieces = explode($delimiter, $line, 2);
+            if (count($pieces) < 2) {
+                continue;
+            }
+
+            $term = strtolower(trim($pieces[0]));
+            $alternatives_raw = trim($pieces[1]);
+
+            if ($term === '' || $alternatives_raw === '') {
+                continue;
+            }
+
+            $alternatives = preg_split('/[,;|]+/', $alternatives_raw);
+            $normalized = [];
+            foreach ($alternatives as $alternative) {
+                $alternative = strtolower(trim($alternative));
+                if ($alternative === '') {
+                    continue;
+                }
+                $normalized[$alternative] = true;
+            }
+
+            if (empty($normalized)) {
+                continue;
+            }
+
+            if (!isset($synonyms[$term])) {
+                $synonyms[$term] = [];
+            }
+
+            $synonyms[$term] = array_values(array_unique(array_merge($synonyms[$term], array_keys($normalized))));
+        }
+
+        return $synonyms;
     }
 
     /**
