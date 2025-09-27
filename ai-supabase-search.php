@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Vector Search (Semantic)
  * Description: Supabase‑powered WooCommerce search with optional semantic matching, live‑search support, and product recommendation.
- * Version: 0.17.0
+ * Version: 0.18.0
  * Author: ZZZ Solutions
  * License: GPLv2 or later
  * Text Domain: ai-vector-search-semantic
