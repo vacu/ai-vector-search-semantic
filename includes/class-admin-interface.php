@@ -120,7 +120,7 @@ class AIVectorSearch_Admin_Interface {
         register_setting('aivesese_settings', "aivesese_{$id}", $config);
     }
 
-    private function sanitize_lite_stopwords($value): string {
+    public function sanitize_lite_stopwords($value): string {
         if (!is_string($value)) {
             return '';
         }
@@ -128,7 +128,7 @@ class AIVectorSearch_Admin_Interface {
         return sanitize_textarea_field(wp_unslash($value));
     }
 
-    private function sanitize_lite_synonyms($value): string {
+    public function sanitize_lite_synonyms($value): string {
         if (!is_string($value)) {
             return '';
         }
@@ -266,7 +266,7 @@ class AIVectorSearch_Admin_Interface {
             return;
         }
 
-        $license_key = sanitize_text_field($_POST['license_key']);
+        $license_key = sanitize_text_field(wp_unslash($_POST['license_key'] ?? ''));
 
         if (empty($license_key)) {
             wp_send_json_error(['message' => 'License key is required']);
@@ -400,7 +400,7 @@ class AIVectorSearch_Admin_Interface {
         echo '<tr><td><strong>API Calls Today</strong></td><td>' . number_format($status['usage']['api_calls_today']) . '</td></tr>';
 
         if (!empty($status['expires_at'])) {
-            echo '<tr><td><strong>Next Payment</strong></td><td>' . esc_html(date('M j, Y', strtotime($status['expires_at']))) . '</td></tr>';
+            echo '<tr><td><strong>Next Payment</strong></td><td>' . esc_html(gmdate('M j, Y', strtotime($status['expires_at']))) . '</td></tr>';
         }
 
         echo '</tbody></table>';
@@ -1215,7 +1215,7 @@ class AIVectorSearch_Admin_Interface {
         if ($installed_time) {
             echo '<div class="notice notice-success inline">';
             echo '<h3>✅ Schema Already Installed</h3>';
-            echo '<p>Installed on <strong>' . date('M j, Y \a\t g:i A', $installed_time) . '</strong>';
+            echo '<p>Installed on <strong>' . gmdate('M j, Y \a\t g:i A', $installed_time) . '</strong>';
             if ($install_method) {
                 echo ' via <strong>' . esc_html($install_method) . '</strong>';
             }
@@ -1339,3 +1339,4 @@ class AIVectorSearch_Admin_Interface {
         return $fallback_content;
     }
 }
+

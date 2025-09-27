@@ -184,7 +184,6 @@ class AIVectorSearch_Product_Sync {
             'post_status' => 'publish',
             'posts_per_page' => $batch_size,
             'offset' => $offset,
-            'suppress_filters' => true,
             'tax_query' => [
                 [
                     'taxonomy' => 'product_visibility',

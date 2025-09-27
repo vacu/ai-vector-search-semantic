@@ -157,10 +157,13 @@ class AIVectorSearch_Lite_Engine {
      * Get products for indexing based on limit setting
      */
     private function get_products_for_indexing(int $limit): array {
+        $posts_limit = $limit > 0 ? $limit : -1;
+
         $args = [
             'post_type' => 'product',
             'post_status' => 'publish',
-            'posts_per_page' => $limit > 0 ? $limit : -1,
+            'posts_per_page' => $posts_limit,
+            'numberposts' => $posts_limit, // Mirror limit; get_posts defaults to 5 otherwise
             'meta_query' => [
                 [
                     'key' => '_stock_status',
@@ -174,7 +177,6 @@ class AIVectorSearch_Lite_Engine {
 
         // If limit is 0, get all products
         if ($limit === 0) {
-            unset($args['posts_per_page']);
             unset($args['meta_query']); // Include out of stock products too
         }
 

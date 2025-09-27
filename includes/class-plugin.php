@@ -381,7 +381,7 @@ add_action('wp_ajax_aivs_dismiss_analytics_notice', function() {
         wp_die('Unauthorized');
     }
 
-    $key = sanitize_text_field($_POST['key']);
+    $key = sanitize_text_field(wp_unslash($_POST['key'] ?? ''));
     update_option("aivesese_{$key}", true, false);
 
     wp_die('OK');

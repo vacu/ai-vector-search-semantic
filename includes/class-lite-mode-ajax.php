@@ -76,7 +76,7 @@ class AIVectorSearch_Lite_Mode_Ajax {
             return;
         }
 
-        $search_term = sanitize_text_field($_POST['term'] ?? '');
+        $search_term = sanitize_text_field(wp_unslash($_POST['term'] ?? ''));
 
         if (empty($search_term)) {
             wp_send_json_error(['message' => 'Search term is required']);
@@ -128,7 +128,7 @@ class AIVectorSearch_Lite_Mode_Ajax {
             return;
         }
 
-        $query = sanitize_text_field($_REQUEST['query'] ?? '');
+        $query = sanitize_text_field(wp_unslash($_REQUEST['query'] ?? ''));
         $limit = intval($_REQUEST['limit'] ?? 10);
 
         if (empty($query) || strlen($query) < 2) {
@@ -212,7 +212,7 @@ class AIVectorSearch_Lite_Mode_Ajax {
             return;
         }
 
-        $new_mode = sanitize_text_field($_POST['mode'] ?? '');
+        $new_mode = sanitize_text_field(wp_unslash($_POST['mode'] ?? ''));
         $valid_modes = ['lite', 'self_hosted', 'api'];
 
         if (!in_array($new_mode, $valid_modes)) {

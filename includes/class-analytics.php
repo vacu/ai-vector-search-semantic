@@ -7,7 +7,11 @@ class AIVectorSearch_Analytics {
 
     private static $instance = null;
     private $table_name;
+    private $table_name_escaped;
     private $db_version = '1.0';
+    private $cache_group = 'aivs_search_analytics';
+    private $cache_ttl;
+    private $recent_search_cache_ttl;
 
     public static function instance() {
         if (self::$instance === null) {
@@ -19,6 +23,12 @@ class AIVectorSearch_Analytics {
     private function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aivs_search_analytics';
+        $this->table_name_escaped = esc_sql($this->table_name);
+
+        $minute = defined('MINUTE_IN_SECONDS') ? MINUTE_IN_SECONDS : 60;
+        $this->cache_ttl = 5 * $minute;
+        $this->recent_search_cache_ttl = $minute;
+
         $this->init_hooks();
     }
 
@@ -86,62 +96,90 @@ class AIVectorSearch_Analytics {
         if ($wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'")) {
             update_option('aivesese_analytics_db_version', $this->db_version);
         }
+
+        $this->invalidate_cache();
     }
 
     /**
      * Track a search query
      */
-    public function track_search(string $term, string $type, array $results, int $clicked_id = null) {
-        if (strlen($term) < 2) {
+    public function track_search(string $term, string $type, array $results, ?int $clicked_id = null) {
+        $normalized_term = sanitize_text_field($term);
+        if (strlen($normalized_term) < 2) {
             return; // Skip very short searches
         }
 
         global $wpdb;
 
+        $user_ip = $this->get_user_ip();
+        $user_agent_raw = isset($_SERVER['HTTP_USER_AGENT']) ? wp_unslash((string) $_SERVER['HTTP_USER_AGENT']) : '';
+        $user_agent = substr(sanitize_text_field($user_agent_raw), 0, 500);
+
         $data = [
-            'search_term' => sanitize_text_field($term),
+            'search_term' => $normalized_term,
             'results_found' => !empty($results) ? 1 : 0,
             'results_count' => count($results),
             'search_type' => sanitize_text_field($type),
-            'clicked_result_id' => $clicked_id,
-            'user_ip' => $this->get_user_ip(),
-            'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500),
+            'clicked_result_id' => $clicked_id !== null ? (int) $clicked_id : null,
+            'user_ip' => $user_ip,
+            'user_agent' => $user_agent,
             'created_at' => current_time('mysql')
         ];
 
-        $wpdb->insert($this->table_name, $data);
+        $inserted = $wpdb->insert($this->table_name, $data);
+
+        if ($inserted !== false) {
+            $this->invalidate_cache();
+
+            if (!empty($wpdb->insert_id)) {
+                $this->set_recent_search_cache($normalized_term, $user_ip, (int) $wpdb->insert_id);
+            }
+        }
     }
 
     /**
      * Track a click on search results
      */
     public function track_click(string $search_term, int $product_id) {
-        if (strlen($search_term) < 2 || !$product_id) {
+        $normalized_term = sanitize_text_field($search_term);
+        if (strlen($normalized_term) < 2 || !$product_id) {
             return;
         }
 
         global $wpdb;
 
-        // Find the most recent search for this term and update it with the click
-        $recent_search = $wpdb->get_row($wpdb->prepare("
-            SELECT id FROM {$this->table_name}
-            WHERE search_term = %s
-            AND user_ip = %s
-            AND clicked_result_id IS NULL
-            ORDER BY created_at DESC
-            LIMIT 1
-        ", $search_term, $this->get_user_ip()));
+        $user_ip = $this->get_user_ip();
+        $recent_id = $this->get_recent_search_id($normalized_term, $user_ip);
 
-        if ($recent_search) {
-            // Update existing search record with click
-            $wpdb->update(
+        if ($recent_id === null) {
+            $query = $this->inject_table_name('SELECT id FROM {table}
+                WHERE search_term = %s
+                AND user_ip = %s
+                AND clicked_result_id IS NULL
+                ORDER BY created_at DESC
+                LIMIT 1');
+            $prepared_sql = $wpdb->prepare($query, $normalized_term, $user_ip);
+
+            if ($prepared_sql !== false) {
+                $recent_id = (int) $wpdb->get_var($prepared_sql);
+                $this->set_recent_search_cache($normalized_term, $user_ip, $recent_id);
+            }
+        }
+
+        if ($recent_id > 0) {
+            $updated = $wpdb->update(
                 $this->table_name,
-                ['clicked_result_id' => $product_id],
-                ['id' => $recent_search->id]
+                ['clicked_result_id' => (int) $product_id],
+                ['id' => $recent_id]
             );
+
+            if ($updated !== false) {
+                $this->invalidate_cache();
+                $this->set_recent_search_cache($normalized_term, $user_ip, $recent_id);
+            }
         } else {
             // Create new record for the click if no matching search found
-            $this->track_search($search_term, 'click', [$product_id], $product_id);
+            $this->track_search($normalized_term, 'click', [$product_id], $product_id);
         }
     }
 
@@ -151,21 +189,30 @@ class AIVectorSearch_Analytics {
     public function get_search_stats(int $days = 30): array {
         global $wpdb;
 
-        $date_limit = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+        $days = max(1, (int) $days);
+        $cache_key = $this->build_cache_key('search_stats', [$days]);
+        $found = false;
+        $cached_stats = wp_cache_get($cache_key, $this->cache_group, false, $found);
+        if ($found) {
+            return $cached_stats;
+        }
 
-        $stats = $wpdb->get_row($wpdb->prepare("
-            SELECT
+        $seconds_per_day = defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
+        $date_limit = gmdate('Y-m-d H:i:s', time() - ($days * $seconds_per_day));
+
+        $query = $this->inject_table_name('SELECT
                 COUNT(*) as total_searches,
                 COUNT(DISTINCT search_term) as unique_terms,
                 SUM(results_found) as successful_searches,
                 AVG(results_count) as avg_results_per_search,
                 COUNT(clicked_result_id) as total_clicks
-            FROM {$this->table_name}
-            WHERE created_at >= %s
-        ", $date_limit));
+            FROM {table}
+            WHERE created_at >= %s');
+        $prepared_sql = $wpdb->prepare($query, $date_limit);
+        $stats = $prepared_sql !== false ? $wpdb->get_row($prepared_sql) : null;
 
         if (!$stats) {
-            return [
+            $result = [
                 'total_searches' => 0,
                 'unique_terms' => 0,
                 'successful_searches' => 0,
@@ -173,18 +220,21 @@ class AIVectorSearch_Analytics {
                 'avg_results_per_search' => 0,
                 'click_through_rate' => 0
             ];
+        } else {
+            $result = [
+                'total_searches' => (int) $stats->total_searches,
+                'unique_terms' => (int) $stats->unique_terms,
+                'successful_searches' => (int) $stats->successful_searches,
+                'success_rate' => $stats->total_searches > 0 ?
+                    round(($stats->successful_searches / $stats->total_searches) * 100, 1) : 0,
+                'avg_results_per_search' => round((float) $stats->avg_results_per_search, 1),
+                'click_through_rate' => $stats->total_searches > 0 ?
+                    round(($stats->total_clicks / $stats->total_searches) * 100, 1) : 0
+            ];
         }
 
-        return [
-            'total_searches' => (int) $stats->total_searches,
-            'unique_terms' => (int) $stats->unique_terms,
-            'successful_searches' => (int) $stats->successful_searches,
-            'success_rate' => $stats->total_searches > 0 ?
-                round(($stats->successful_searches / $stats->total_searches) * 100, 1) : 0,
-            'avg_results_per_search' => round((float) $stats->avg_results_per_search, 1),
-            'click_through_rate' => $stats->total_searches > 0 ?
-                round(($stats->total_clicks / $stats->total_searches) * 100, 1) : 0
-        ];
+        wp_cache_set($cache_key, $result, $this->cache_group, $this->cache_ttl);
+        return $result;
     }
 
     /**
@@ -193,24 +243,36 @@ class AIVectorSearch_Analytics {
     public function get_popular_terms(int $limit = 10, int $days = 30): array {
         global $wpdb;
 
-        $date_limit = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+        $limit = max(1, (int) $limit);
+        $days = max(1, (int) $days);
+        $cache_key = $this->build_cache_key('popular_terms', [$limit, $days]);
+        $found = false;
+        $cached_terms = wp_cache_get($cache_key, $this->cache_group, false, $found);
+        if ($found) {
+            return $cached_terms;
+        }
 
-        $results = $wpdb->get_results($wpdb->prepare("
-            SELECT
+        $seconds_per_day = defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
+        $date_limit = gmdate('Y-m-d H:i:s', time() - ($days * $seconds_per_day));
+
+        $query = $this->inject_table_name('SELECT
                 search_term,
                 COUNT(*) as search_count,
                 SUM(results_found) as found_count,
                 AVG(results_count) as avg_results,
                 COUNT(clicked_result_id) as click_count,
                 ROUND((COUNT(clicked_result_id) / COUNT(*)) * 100, 1) as ctr_percent
-            FROM {$this->table_name}
+            FROM {table}
             WHERE created_at >= %s
             GROUP BY search_term
             ORDER BY search_count DESC
-            LIMIT %d
-        ", $date_limit, $limit));
+            LIMIT %d');
+        $prepared_sql = $wpdb->prepare($query, $date_limit, $limit);
+        $results = $prepared_sql !== false ? $wpdb->get_results($prepared_sql) : [];
 
-        return $results ?: [];
+        $results = $results ?: [];
+        wp_cache_set($cache_key, $results, $this->cache_group, $this->cache_ttl);
+        return $results;
     }
 
     /**
@@ -219,23 +281,35 @@ class AIVectorSearch_Analytics {
     public function get_zero_result_searches(int $limit = 10, int $days = 30): array {
         global $wpdb;
 
-        $date_limit = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+        $limit = max(1, (int) $limit);
+        $days = max(1, (int) $days);
+        $cache_key = $this->build_cache_key('zero_result_searches', [$limit, $days]);
+        $found = false;
+        $cached_results = wp_cache_get($cache_key, $this->cache_group, false, $found);
+        if ($found) {
+            return $cached_results;
+        }
 
-        $results = $wpdb->get_results($wpdb->prepare("
-            SELECT
+        $seconds_per_day = defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
+        $date_limit = gmdate('Y-m-d H:i:s', time() - ($days * $seconds_per_day));
+
+        $query = $this->inject_table_name('SELECT
                 search_term,
                 COUNT(*) as search_count,
                 MAX(created_at) as last_searched
-            FROM {$this->table_name}
+            FROM {table}
             WHERE created_at >= %s
             AND results_found = 0
             GROUP BY search_term
             HAVING search_count >= 2
             ORDER BY search_count DESC
-            LIMIT %d
-        ", $date_limit, $limit));
+            LIMIT %d');
+        $prepared_sql = $wpdb->prepare($query, $date_limit, $limit);
+        $results = $prepared_sql !== false ? $wpdb->get_results($prepared_sql) : [];
 
-        return $results ?: [];
+        $results = $results ?: [];
+        wp_cache_set($cache_key, $results, $this->cache_group, $this->cache_ttl);
+        return $results;
     }
 
     /**
@@ -288,38 +362,50 @@ class AIVectorSearch_Analytics {
      * Export analytics data (basic CSV for free version)
      */
     public function export_search_data(string $format = 'csv'): string {
+        $format = strtolower($format);
+        if ($format !== 'csv') {
+            return '';
+        }
+
+        $cache_key = $this->build_cache_key('export_search_data', [$format]);
+        $found = false;
+        $cached_export = wp_cache_get($cache_key, $this->cache_group, false, $found);
+        if ($found) {
+            return $cached_export;
+        }
+
         global $wpdb;
 
-        $data = $wpdb->get_results("
-            SELECT
+        $query = $this->inject_table_name('SELECT
                 search_term,
                 search_type,
                 results_found,
                 results_count,
                 DATE(created_at) as search_date,
                 TIME(created_at) as search_time
-            FROM {$this->table_name}
+            FROM {table}
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             ORDER BY created_at DESC
-            LIMIT 1000
-        ");
+            LIMIT 1000');
 
-        if ($format === 'csv') {
-            $output = "Search Term,Search Type,Found Results,Result Count,Date,Time\n";
-            foreach ($data as $row) {
-                $output .= sprintf('"%s","%s","%s","%s","%s","%s"' . "\n",
-                    $row->search_term,
-                    $row->search_type,
-                    $row->results_found ? 'Yes' : 'No',
-                    $row->results_count,
-                    $row->search_date,
-                    $row->search_time
-                );
-            }
-            return $output;
+        $data = $wpdb->get_results($query);
+
+        $data = $data ?: [];
+
+        $output = "Search Term,Search Type,Found Results,Result Count,Date,Time\n";
+        foreach ($data as $row) {
+            $output .= sprintf('"%s","%s","%s","%s","%s","%s"' . "\n",
+                $row->search_term,
+                $row->search_type,
+                $row->results_found ? 'Yes' : 'No',
+                $row->results_count,
+                $row->search_date,
+                $row->search_time
+            );
         }
 
-        return '';
+        wp_cache_set($cache_key, $output, $this->cache_group, $this->cache_ttl);
+        return $output;
     }
 
     /**
@@ -355,12 +441,20 @@ class AIVectorSearch_Analytics {
         $insights = $this->get_business_insights();
 
         // Handle export
-        if (isset($_GET['export']) && $_GET['export'] === 'csv') {
-            $csv_data = $this->export_search_data('csv');
-            header('Content-Type: text/csv');
-            header('Content-Disposition: attachment; filename="search-analytics-' . date('Y-m-d') . '.csv"');
-            echo $csv_data;
-            exit;
+        if (isset($_GET['export'])) {
+            $export = sanitize_text_field(wp_unslash($_GET['export']));
+            if ($export === 'csv') {
+                $nonce = isset($_GET['_wpnonce']) ? wp_unslash($_GET['_wpnonce']) : '';
+                if (!wp_verify_nonce($nonce, 'aivesese_export_analytics')) {
+                    wp_die(esc_html__('Security check failed.', 'aivesese'));
+                }
+
+                $csv_data = $this->export_search_data('csv');
+                header('Content-Type: text/csv');
+                header('Content-Disposition: attachment; filename="search-analytics-' . gmdate('Y-m-d') . '.csv"');
+                echo $csv_data;
+                exit;
+            }
         }
 
         // Load template
@@ -387,12 +481,83 @@ class AIVectorSearch_Analytics {
     public function cleanup_old_data() {
         global $wpdb;
 
-        $cutoff_date = date('Y-m-d H:i:s', strtotime('-90 days'));
+        $seconds_per_day = defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
+        $cutoff_date = gmdate('Y-m-d H:i:s', time() - (90 * $seconds_per_day));
 
-        $wpdb->query($wpdb->prepare("
-            DELETE FROM {$this->table_name}
-            WHERE created_at < %s
-        ", $cutoff_date));
+        $query = $this->inject_table_name('DELETE FROM {table}
+            WHERE created_at < %s');
+        $prepared_sql = $wpdb->prepare($query, $cutoff_date);
+        $deleted = $prepared_sql !== false ? $wpdb->query($prepared_sql) : false;
+
+        if ($deleted !== false) {
+            $this->invalidate_cache();
+        }
+    }
+
+    /**
+     * Retrieve the current cache version, creating one if needed.
+     */
+    private function get_cache_version(): string {
+        $found = false;
+        $version = wp_cache_get('version', $this->cache_group, false, $found);
+
+        if (!$found || !is_string($version) || $version === '') {
+            $version = (string) microtime(true);
+            wp_cache_set('version', $version, $this->cache_group);
+        }
+
+        return $version;
+    }
+
+    /**
+     * Build a namespaced cache key so we can invalidate via version bumps.
+     */
+    private function build_cache_key(string $context, array $args = []): string {
+        $version = $this->get_cache_version();
+
+        if (!empty($args)) {
+            $serializer = function_exists('wp_json_encode') ? 'wp_json_encode' : 'json_encode';
+            $context .= ':' . md5((string) $serializer($args));
+        }
+
+        return $version . ':' . $context;
+    }
+
+    /**
+     * Invalidate analytics caches.
+     */
+    private function invalidate_cache(): void {
+        wp_cache_delete('version', $this->cache_group);
+    }
+
+    /**
+     * Cache the most recent search ID for a term/user combination.
+     */
+    private function set_recent_search_cache(string $search_term, string $user_hash, int $search_id): void {
+        $cache_key = $this->build_cache_key('recent_search', [$search_term, $user_hash]);
+        wp_cache_set($cache_key, $search_id, $this->cache_group, $this->recent_search_cache_ttl);
+    }
+
+    /**
+     * Attempt to fetch a cached recent search ID.
+     */
+    private function get_recent_search_id(string $search_term, string $user_hash): ?int {
+        $cache_key = $this->build_cache_key('recent_search', [$search_term, $user_hash]);
+        $found = false;
+        $cached_id = wp_cache_get($cache_key, $this->cache_group, false, $found);
+
+        if (!$found) {
+            return null;
+        }
+
+        return (int) $cached_id;
+    }
+
+    /**
+     * Replace the table placeholder with the escaped table name for raw SQL fragments.
+     */
+    private function inject_table_name(string $sql_template): string {
+        return str_replace('{table}', $this->table_name_escaped, $sql_template);
     }
 
     /**
@@ -400,7 +565,11 @@ class AIVectorSearch_Analytics {
      */
     private function get_user_ip(): string {
         // Hash IP for privacy
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $raw_ip = isset($_SERVER['REMOTE_ADDR']) ? wp_unslash((string) $_SERVER['REMOTE_ADDR']) : '';
+        $ip = filter_var($raw_ip, FILTER_VALIDATE_IP);
+        if (!$ip) {
+            $ip = '127.0.0.1';
+        }
         return substr(md5($ip . wp_salt()), 0, 10);
     }
 }

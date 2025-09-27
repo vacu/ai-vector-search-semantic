@@ -75,7 +75,7 @@ class AIVectorSearch_Search_Handler {
             return;
         }
 
-        $query = sanitize_text_field($_REQUEST['query'] ?? '');
+        $query = sanitize_text_field(wp_unslash($_REQUEST['query'] ?? ''));
         $number = intval($_REQUEST['number'] ?? 20);
 
         if (strlen($query) < 3) {
@@ -132,7 +132,7 @@ class AIVectorSearch_Search_Handler {
             return;
         }
 
-        $search_term = sanitize_text_field($_REQUEST['query'] ?? '');
+        $search_term = sanitize_text_field(wp_unslash($_REQUEST['query'] ?? ''));
 
         if (strlen($search_term) < 3) {
             return;
@@ -177,7 +177,7 @@ class AIVectorSearch_Search_Handler {
 
         // Generic AJAX search detection (not Woodmart specific)
         if (wp_doing_ajax() && !isset($_REQUEST['action'])) {
-            $search_term = sanitize_text_field($_REQUEST['s'] ?? $_REQUEST['query'] ?? '');
+            $search_term = sanitize_text_field(wp_unslash($_REQUEST['s'] ?? $_REQUEST['query'] ?? ''));
             if ($search_term) {
                 $is_ajax_search = true;
                 $query->set('post_type', ['product']);
@@ -284,7 +284,7 @@ class AIVectorSearch_Search_Handler {
     public function maybe_track_click() {
         // Check if this is a click from search results
         if (isset($_GET['from_search']) && isset($_GET['search_term']) && is_singular('product')) {
-            $search_term = sanitize_text_field($_GET['search_term']);
+            $search_term = sanitize_text_field(wp_unslash($_GET['search_term'] ?? ''));
             $product_id = get_the_ID();
 
             // Track the click in analytics

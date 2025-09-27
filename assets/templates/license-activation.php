@@ -40,7 +40,7 @@ defined('ABSPATH') || exit;
                         <?php if (!empty($activation_data['expires_at'])): ?>
                             <div class="license-detail">
                                 <span class="detail-label">Next Payment:</span>
-                                <span class="detail-value"><?php echo esc_html(date('M j, Y', strtotime($activation_data['expires_at']))); ?></span>
+                                <span class="detail-value"><?php echo esc_html(gmdate('M j, Y', strtotime($activation_data['expires_at']))); ?></span>
                             </div>
                         <?php endif; ?>
                     </div>
