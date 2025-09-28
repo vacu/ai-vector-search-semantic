@@ -21,6 +21,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 * **Semantic Vector Search** - AI understanding of product meaning and context using OpenAI embeddings
 * **SKU & GTIN Search** - Find products by partial SKU, EAN, UPC, or ISBN codes
 * **Hybrid Search** - Combines multiple search methods for best results
+* **Instant Lite Mode** - Built-in TF-IDF engine with synonyms, stopwords, and scheduled indexing that runs without Supabase or OpenAI
 
 **Intelligent Recommendations:**
 * **Similar Products** - AI-powered product recommendations on product detail pages
@@ -36,6 +37,20 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 * **Secure Key Management** - Encrypted storage of API keys with master key support
 * **Row-Level Security** - Built-in Supabase RLS policies
 * **Comprehensive Admin Interface** - Status monitoring, health checks, and sync tools
+
+**Actionable Analytics & Insights:**
+* **Search Analytics Dashboard** - Track search volume, success rate, CTR, and popular terms.
+* **Zero-Result Alerts** - Get notified when customers search for products you do not stock yet.
+* **Click Tracking** - Measure which products shoppers open after searching to refine merchandising.
+
+### ?? Flexible Connection Modes
+
+AI Vector Search adapts to the way you want to run search:
+* **Lite (default)** - Instant, zero-config local search with the Lite engine and optional stopword/synonym tuning.
+* **Self-Hosted Supabase** - Connect your own Supabase project for scalable full-text, vector, and SKU search without leaving your infrastructure.
+* **Managed API Service** - Activate with a license key to let us host the stack while you manage settings in WordPress.
+
+Switch between modes any time in **Settings  AI Supabase**. Activating the managed API prompts for your license key, while Supabase mode uses your project URL, service key, and optional OpenAI key.
 
 ### 🔒 Security & Privacy First
 
@@ -69,21 +84,26 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 ### Quick Start (5 Minutes)
 
-1. **Install & Activate** the plugin from WordPress admin or upload manually
-2. **Set up Supabase:**
-   - Create a free account at [supabase.com](https://supabase.com)
-   - Create a new project
-   - Copy your project URL and service key
-3. **Configure Plugin:**
-   - Go to **Settings → AI Supabase**
-   - Enter your Supabase URL and key
-   - (Optional) Add OpenAI API key for semantic search
-4. **Install Database Schema:**
-   - Copy the provided SQL from the setup guide
-   - Paste into **Supabase → SQL Editor** and run
-5. **Sync Products:**
-   - Visit **Settings → Sync Products**
-   - Click "Sync All Products" or use batch sync for large catalogs
+1. **Install & Activate** the plugin from WordPress admin or upload manually.
+2. **Use Lite Mode instantly** - search works locally out of the box. Visit **Settings  AI Supabase** to adjust Lite stopwords, synonyms, or index limits if you need to tune results.
+3. **(Optional) Connect Supabase for self-hosted search:**
+   - Create a free account at [supabase.com](https://supabase.com) and start a new project.
+   - Copy your project URL and service key into the plugin settings.
+   - Run the built-in schema installer from the admin UI or WP-CLI.
+4. **(Optional) Enable Semantic Search with OpenAI:**
+   - Add your OpenAI API key to generate embeddings (self-hosted or API modes).
+   - Choose the search mode that fits your catalog and budget.
+5. **(Optional) Run a product sync** from **Settings  Sync Products** or with `wp aivs sync-products` when Supabase is connected.
+
+### Command Line Tools (WP-CLI)
+
+Speed up setup and maintenance with new WP-CLI commands (requires the PostgreSQL client and, for schema installs, the encrypted connection string saved in settings):
+* `wp aivs install-schema` - install or update the Supabase schema from your WordPress server.
+* `wp aivs check-schema` - verify tables, functions, and extensions are present.
+* `wp aivs test-connection` - confirm credentials before running migrations.
+* `wp aivs sync-products` - batch sync products after catalog changes.
+
+You can also trigger schema installation from the admin UI; both paths use the encrypted PostgreSQL connection string you store under **Settings  AI Supabase**.
 
 ### Getting Your API Keys
 
@@ -108,6 +128,10 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 7. Setup guide for manual and WP-CLI installation, including PostgreSQL connection and OpenAI configuration.
 
 == Frequently Asked Questions ==
+
+= What are the connection modes? =
+
+Lite mode runs locally and is enabled by default. Switch to self-hosted Supabase when you want scalable vector search on your own infrastructure, or activate the managed API service with your license key when you prefer a fully hosted stack. You can change modes in **Settings  AI Supabase** and the plugin will guide you through any extra steps (keys, schema install, or product sync).
 
 = Is OpenAI required? =
 
