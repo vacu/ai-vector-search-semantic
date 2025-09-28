@@ -4,7 +4,7 @@ Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable Tag: 0.18.1
+Stable Tag: 0.18.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -191,7 +191,12 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Changelog ==
 
-= 0.18.0 (Latest) =
+= 0.18.2 (Latest) =
+* **New:** Top level menu for the plugin
+* **New:** Configurable search limit for search results
+* **Fix:** Analytics template
+
+= 0.18.0 =
 * **New:** Lite Mode local TF-IDF search with configurable stopwords, synonym expansion, scheduled re-indexing, and upgrade guidance for stores that want zero external services
 * **New:** Search enable/disable toggle so merchants can fall back to default WooCommerce search without disabling the plugin, plus Lite Mode defaults on fresh installs
 * **New:** Fuzzy matching fallback across Lite, API, and self-hosted modes to reduce zero-result searches and surface partial matches
@@ -307,7 +312,12 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == Upgrade Notice ==
 
-= 0.18.0 (Latest) =
+= 0.18.2 (Latest) =
+* **New:** Top level menu for the plugin
+* **New:** Configurable search limit for search results
+* **Fix:** Analytics template
+
+= 0.18.0 =
 * **New:** Lite Mode local TF-IDF search with configurable stopwords, synonym expansion, scheduled re-indexing, and upgrade guidance for stores that want zero external services
 * **New:** Search enable/disable toggle so merchants can fall back to default WooCommerce search without disabling the plugin, plus Lite Mode defaults on fresh installs
 * **New:** Fuzzy matching fallback across Lite, API, and self-hosted modes to reduce zero-result searches and surface partial matches
