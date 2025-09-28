@@ -230,14 +230,14 @@ $upgrade_suggestions = $connection_manager->get_upgrade_suggestions();
             <div class="upgrade-option-card">
                 <h5>🏗️ Self-Hosted (DIY)</h5>
                 <p>Use your own Supabase + OpenAI accounts. You control everything!</p>
-                <a href="<?php echo admin_url('options-general.php?page=aivesese&tab=self-hosted'); ?>"
+                <a href="<?php echo admin_url('admin.php?page=aivesese&tab=self-hosted'); ?>"
                    class="button button-secondary">Configure Self-Hosted</a>
             </div>
 
             <div class="upgrade-option-card premium">
                 <h5>🚀 Managed API Service</h5>
                 <p>Zero setup, maximum performance. Let us handle the infrastructure!</p>
-                <a href="<?php echo admin_url('options-general.php?page=aivesese&tab=api-service'); ?>"
+                <a href="<?php echo admin_url('admin.php?page=aivesese&tab=api-service'); ?>"
                    class="button button-primary">Get API License</a>
             </div>
         </div>

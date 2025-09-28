@@ -80,7 +80,11 @@ class AIVectorSearch_API_Client {
     /**
      * Full-text search via API
      */
-    public function search_fts(string $term, int $limit = 20): array {
+    public function search_fts(string $term, int $limit = 0): array {
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
+        }
         $response = $this->request('POST', '/search/fts', [
             'term' => $term,
             'limit' => $limit
@@ -92,7 +96,11 @@ class AIVectorSearch_API_Client {
     /**
      * Fuzzy search via API
      */
-    public function search_fuzzy(string $term, int $limit = 20): array {
+    public function search_fuzzy(string $term, int $limit = 0): array {
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
+        }
         $response = $this->request('POST', '/search/fuzzy', [
             'term' => $term,
             'limit' => $limit
@@ -104,7 +112,11 @@ class AIVectorSearch_API_Client {
     /**
      * Semantic search via API
      */
-    public function search_semantic(string $term, int $limit = 20, float $threshold = 0.5): array {
+    public function search_semantic(string $term, int $limit = 0, float $threshold = 0.5): array {
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
+        }
         $response = $this->request('POST', '/search/semantic', [
             'term' => $term,
             'limit' => $limit,
@@ -117,7 +129,11 @@ class AIVectorSearch_API_Client {
     /**
      * SKU search via API
      */
-    public function search_sku(string $term, int $limit = 20): array {
+    public function search_sku(string $term, int $limit = 0): array {
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
+        }
         $response = $this->request('POST', '/search/sku', [
             'term' => $term,
             'limit' => $limit

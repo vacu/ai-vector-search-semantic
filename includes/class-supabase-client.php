@@ -152,7 +152,11 @@ class AIVectorSearch_Supabase_Client {
         return !is_wp_error($result);
     }
 
-    public function search_products_fts(string $term, int $limit = 20): array {
+    public function search_products_fts(string $term, int $limit = 0): array {
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
+        }
         $store = get_option('aivesese_store');
         if (!$store || mb_strlen($term) < 3) {
             return [];
@@ -170,7 +174,11 @@ class AIVectorSearch_Supabase_Client {
         return wp_list_pluck((array) $rows, 'woocommerce_id');
     }
 
-    public function search_products_sku(string $term, int $limit = 20): array {
+    public function search_products_sku(string $term, int $limit = 0): array {
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
+        }
         $store = get_option('aivesese_store');
         if (!$store || mb_strlen($term) < 2) {
             return [];
@@ -188,7 +196,11 @@ class AIVectorSearch_Supabase_Client {
         return wp_list_pluck((array) $rows, 'woocommerce_id');
     }
 
-    public function search_products_semantic(string $term, array $embedding, int $limit = 20): array {
+    public function search_products_semantic(string $term, array $embedding, int $limit = 0): array {
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
+        }
         $store = get_option('aivesese_store');
         if (!$store || empty($embedding)) {
             return [];
@@ -204,7 +216,11 @@ class AIVectorSearch_Supabase_Client {
         return wp_list_pluck($rows, 'woocommerce_id');
     }
 
-    public function search_products_fuzzy(string $term, int $limit = 20): array {
+    public function search_products_fuzzy(string $term, int $limit = 0): array {
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
+        }
         $store = get_option('aivesese_store');
         if (!$store || mb_strlen($term) < 2) {
             return [];

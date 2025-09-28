@@ -68,6 +68,7 @@ class AIVectorSearch_Admin_Interface {
             'enable_pdp_similar' => 'PDP "Similar products"',
             'enable_cart_below' => 'Below-cart recommendations',
             'enable_woodmart_integration' => 'Woodmart live search integration',
+            'search_results_limit' => 'Search Results Limit',
             'lite_index_limit' => 'Lite Mode Index Limit',
             'lite_stopwords' => 'Lite Mode Stopwords',
             'lite_synonyms' => 'Lite Mode Synonyms',
@@ -90,6 +91,7 @@ class AIVectorSearch_Admin_Interface {
             'store' => 'sanitize_text_field',
             'openai' => 'aivesese_passthru',
             'postgres_connection_string' => 'aivesese_passthru', // Will be encrypted
+            'search_results_limit' => [$this, 'sanitize_search_results_limit'],
             'lite_index_limit' => 'absint',
             'lite_stopwords' => [$this, 'sanitize_lite_stopwords'],
             'lite_synonyms' => [$this, 'sanitize_lite_synonyms'],
@@ -104,6 +106,11 @@ class AIVectorSearch_Admin_Interface {
         // Special handling for connection mode
         if ($id === 'connection_mode') {
             $config['default'] = 'lite';
+        }
+
+        if ($id === 'search_results_limit') {
+            $config['type'] = 'integer';
+            $config['default'] = 20;
         }
 
         if ($id === 'lite_index_limit') {
@@ -134,6 +141,20 @@ class AIVectorSearch_Admin_Interface {
         }
 
         return sanitize_textarea_field(wp_unslash($value));
+    }
+
+    private function sanitize_search_results_limit($value): int {
+        $limit = absint($value);
+
+        if ($limit < 1) {
+            return 20;
+        }
+
+        if ($limit > 100) {
+            return 100;
+        }
+
+        return $limit;
     }
 
     private function add_settings_fields() {
@@ -179,6 +200,15 @@ class AIVectorSearch_Admin_Interface {
             'aivesese_postgres_connection_string',
             'PostgreSQL Connection String',
             [$this, 'render_postgres_connection_field'],
+            'aivesese',
+            'aivesese_section'
+        );
+
+        // Search limit field
+        add_settings_field(
+            'aivesese_search_results_limit',
+            'Search Results Limit',
+            [$this, 'render_search_limit_field'],
             'aivesese',
             'aivesese_section'
         );
@@ -240,6 +270,17 @@ class AIVectorSearch_Admin_Interface {
         if ($field_id === 'openai') {
             echo '<p class="description">Only required if semantic search is enabled</p>';
         }
+    }
+
+    public function render_search_limit_field() {
+        $value = aivesese_get_search_results_limit();
+
+        printf(
+            '<input type="number" id="aivesese_search_results_limit" name="aivesese_search_results_limit" value="%d" min="1" max="100" class="small-text" />',
+            esc_attr($value)
+        );
+
+        echo '<p class="description">Maximum number of products to return in search results (1-100). Default: 20</p>';
     }
 
     public function render_checkbox_field($args) {
@@ -489,36 +530,61 @@ class AIVectorSearch_Admin_Interface {
         echo '<tr><th>' . esc_html__('Last Rebuild', 'ai-vector-search-semantic') . '</th><td>' . esc_html($last_built) . '</td></tr>';
         echo '</tbody></table>';
 
-        echo '<p><a class="button button-primary" href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '">' . esc_html__('Manage Lite settings', 'ai-vector-search-semantic') . '</a></p>';
+        echo '<p><a class="button button-primary" href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">' . esc_html__('Manage Lite settings', 'ai-vector-search-semantic') . '</a></p>';
     }
 
 
     public function add_admin_pages() {
-        add_options_page(
-            'AI Supabase',
-            'AI Supabase',
-            'manage_options',
-            'aivesese',
-            [$this, 'render_settings_page']
+        // Add top-level menu page
+        add_menu_page(
+            'AI Vector Search',                    // Page title
+            'AI Vector Search',                    // Menu title
+            'manage_options',                      // Capability
+            'aivesese',                           // Menu slug
+            [$this, 'render_settings_page'],     // Callback function
+            'dashicons-search',                   // Icon
+            30                                    // Position
+        );
+
+        // Add submenu pages under the main menu
+        add_submenu_page(
+            'aivesese',                           // Parent slug
+            'AI Vector Search Settings',          // Page title
+            'Settings',                           // Menu title
+            'manage_options',                     // Capability
+            'aivesese',                          // Menu slug (same as parent for first submenu)
+            [$this, 'render_settings_page']     // Callback function
         );
 
         add_submenu_page(
-            'options-general.php',
-            'AI Supabase Status',
-            'Supabase Status',
+            'aivesese',
+            'AI Vector Search Status',
+            'Status',
             'manage_options',
             'aivesese-status',
             [$this, 'render_status_page']
         );
 
         add_submenu_page(
-            'options-general.php',
-            'Sync Products to Supabase',
+            'aivesese',
+            'Sync Products',
             'Sync Products',
             'manage_options',
             'aivesese-sync',
             [$this, 'render_sync_page']
         );
+
+        // Add Analytics page if analytics is available
+        if (class_exists('AIVectorSearch_Analytics')) {
+            add_submenu_page(
+                'aivesese',
+                'Search Analytics',
+                'Analytics',
+                'manage_options',
+                'aivesese-analytics',
+                [AIVectorSearch_Analytics::instance(), 'render_analytics_page_template']
+            );
+        }
     }
 
 
@@ -529,7 +595,7 @@ class AIVectorSearch_Admin_Interface {
         $connection_mode = get_option('aivesese_connection_mode', 'lite');
         if ($connection_mode === 'lite') {
             echo '<div class="notice notice-info"><p>' . esc_html__('Lite mode manages its search index automatically. No Supabase sync is required.', 'ai-vector-search-semantic') . '</p></div>';
-            echo '<p><a class="button button-primary" href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '">' . esc_html__('Manage Lite settings', 'ai-vector-search-semantic') . '</a></p>';
+            echo '<p><a class="button button-primary" href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">' . esc_html__('Manage Lite settings', 'ai-vector-search-semantic') . '</a></p>';
             echo '</div>';
             return;
         }
@@ -560,7 +626,7 @@ class AIVectorSearch_Admin_Interface {
     private function render_configuration_error() {
         echo '<div class="notice notice-error"><p>';
         echo esc_html__('Configuration incomplete! Please configure your Supabase settings first.', 'ai-vector-search-semantic');
-        echo ' <a href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '">';
+        echo ' <a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">';
         echo esc_html__('Go to Settings', 'ai-vector-search-semantic') . '</a>';
         echo '</p></div>';
     }
@@ -666,8 +732,8 @@ class AIVectorSearch_Admin_Interface {
     private function render_quick_actions() {
         echo '<h2>' . esc_html__('Quick Actions', 'ai-vector-search-semantic') . '</h2>';
         echo '<p>';
-        echo '<a href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '" class="button">' . esc_html__('Configure Settings', 'ai-vector-search-semantic') . '</a> ';
-        echo '<a href="' . esc_url(admin_url('options-general.php?page=aivesese-status')) . '" class="button">' . esc_html__('Refresh Status', 'ai-vector-search-semantic') . '</a>';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '" class="button">' . esc_html__('Configure Settings', 'ai-vector-search-semantic') . '</a> ';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese-status')) . '" class="button">' . esc_html__('Refresh Status', 'ai-vector-search-semantic') . '</a>';
         echo '</p>';
     }
 
@@ -1047,9 +1113,11 @@ class AIVectorSearch_Admin_Interface {
     public function show_services_banner() {
         $screen = function_exists('get_current_screen') ? get_current_screen() : null;
         $allowed_screens = [
-            'settings_page_aivesese',
-            'settings_page_aivesese-status',
-            'settings_page_aivesese-sync'
+            'toplevel_page_aivesese',
+            'aivesese_page_aivesese',
+            'aivesese_page_aivesese-status',
+            'aivesese_page_aivesese-sync',
+            'aivesese_page_aivesese-analytics'
         ];
 
         if (!$screen || !in_array($screen->id, $allowed_screens, true)) {
@@ -1087,9 +1155,11 @@ class AIVectorSearch_Admin_Interface {
         // Only show on relevant admin pages
         $screen = function_exists('get_current_screen') ? get_current_screen() : null;
         $allowed_screens = [
-            'settings_page_aivesese',
-            'settings_page_aivesese-status',
-            'settings_page_aivesese-sync',
+            'toplevel_page_aivesese',
+            'aivesese_page_aivesese',
+            'aivesese_page_aivesese-status',
+            'aivesese_page_aivesese-sync',
+            'aivesese_page_aivesese-analytics',
             'plugins'
         ];
 
@@ -1107,13 +1177,13 @@ class AIVectorSearch_Admin_Interface {
         echo '</ul>';
         echo '<p><strong>Action required:</strong> Please update your Supabase SQL to get these features:</p>';
         echo '<ol style="margin-left: 20px;">';
-        echo '<li>Go to <a href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '"><strong>Settings → AI Supabase</strong></a></li>';
+        echo '<li>Go to <a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '"><strong>Settings → AI Supabase</strong></a></li>';
         echo '<li>Expand the <strong>"Setup Guide"</strong> section</li>';
         echo '<li>Copy the updated SQL and run it in <strong>Supabase → SQL Editor</strong></li>';
         echo '<li>The new functions will be added/updated automatically</li>';
         echo '</ol>';
         echo '<p>';
-        echo '<a href="' . esc_url(admin_url('options-general.php?page=aivesese')) . '" class="button button-primary">Update SQL Now</a> ';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '" class="button button-primary">Update SQL Now</a> ';
         echo '<a href="' .
             esc_url(wp_nonce_url(add_query_arg('aivesese_sql_v2_dismiss', 1), 'aivesese_sql_v2_nonce')) .
             '" class="button">I\'ve Updated It</a>';

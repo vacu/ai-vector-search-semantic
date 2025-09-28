@@ -211,9 +211,14 @@ class AIVectorSearch_Search_Handler {
     /**
      * Main search method
      */
-    public function search_products(string $term, int $limit = 20): array {
+    public function search_products(string $term, int $limit = 0): array {
         if (!$this->is_search_enabled()) {
             return [];
+        }
+
+        // Use configured limit if none provided
+        if ($limit === 0) {
+            $limit = aivesese_get_search_results_limit();
         }
 
         $use_semantic = $this->should_use_semantic_search($term);
@@ -430,7 +435,7 @@ class AIVectorSearch_Search_Handler {
         }
 
         $defaults = [
-            'limit' => 20,
+            'limit' => aivesese_get_search_results_limit(),
             'track' => true,
             'include_data' => false
         ];

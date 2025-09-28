@@ -160,7 +160,7 @@ class PostgreSQLInstaller {
         message += '<h4>🎉 Next Steps:</h4>';
         message += '<ol>';
         message += '<li>✅ Database schema is ready</li>';
-        message += '<li>📦 <a href="' + this.getAdminUrl('options-general.php?page=aivesese-sync') + '">Sync your products</a></li>';
+        message += '<li>📦 <a href="' + this.getAdminUrl('admin.php?page=aivesese-sync') + '">Sync your products</a></li>';
         message += '<li>🔍 Test search functionality on your store</li>';
         message += '</ol>';
         message += '</div>';

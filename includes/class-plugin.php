@@ -172,7 +172,7 @@ class AIVectorSearch_Plugin {
             echo '<p>Great news! Your store has <strong>' . $stats['total_searches'] . ' searches</strong> this week. ';
             echo 'We\'ve been collecting analytics data that can help you boost sales!</p>';
             echo '<p>';
-            echo '<a href="' . admin_url('options-general.php?page=aivesese-analytics') . '" class="button button-primary">View Analytics Dashboard</a> ';
+            echo '<a href="' . admin_url('admin.php?page=aivesese-analytics') . '" class="button button-primary">View Analytics Dashboard</a> ';
             echo '<a href="#" class="aivs-dismiss-notice" data-key="analytics_discovered">Maybe Later</a>';
             echo '</p>';
             echo '</div>';
@@ -190,7 +190,7 @@ class AIVectorSearch_Plugin {
             echo 'This could be a significant sales opportunity!</p>';
             echo '<p>';
             echo '<a href="' . admin_url('post-new.php?post_type=product') . '" class="button button-primary">Add Product for "' . esc_html($term) . '"</a> ';
-            echo '<a href="' . admin_url('options-general.php?page=aivesese-analytics') . '" class="button">View All Opportunities</a>';
+            echo '<a href="' . admin_url('admin.php?page=aivesese-analytics') . '" class="button">View All Opportunities</a>';
             echo '</p>';
             echo '</div>';
         }
@@ -250,7 +250,7 @@ class AIVectorSearch_Plugin {
         echo '<li>💰 Pay only API usage</li>';
         echo '<li>📊 Basic analytics included</li>';
         echo '</ul>';
-        echo '<p><a href="' . admin_url('options-general.php?page=aivesese') . '" class="button">Configure Now</a></p>';
+        echo '<p><a href="' . admin_url('admin.php?page=aivesese') . '" class="button">Configure Now</a></p>';
         echo '</div>';
 
         echo '</div>';
@@ -268,7 +268,7 @@ class AIVectorSearch_Plugin {
     private function show_api_setup_notice() {
         echo '<div class="notice notice-warning">';
         echo '<p><strong>AI Vector Search:</strong> API mode is selected but no license key is configured. ';
-        echo '<a href="' . admin_url('options-general.php?page=aivesese') . '">Configure your license key</a> or ';
+        echo '<a href="' . admin_url('admin.php?page=aivesese') . '">Configure your license key</a> or ';
         echo '<a href="https://zzzsolutions.ro/ai-search-service" target="_blank">get a license</a>.</p>';
         echo '</div>';
     }
@@ -276,7 +276,7 @@ class AIVectorSearch_Plugin {
     private function show_self_hosted_setup_notice() {
         echo '<div class="notice notice-warning">';
         echo '<p><strong>AI Vector Search:</strong> Self-hosted mode requires Supabase configuration. ';
-        echo '<a href="' . admin_url('options-general.php?page=aivesese') . '">Complete your setup</a>.</p>';
+        echo '<a href="' . admin_url('admin.php?page=aivesese') . '">Complete your setup</a>.</p>';
         echo '</div>';
     }
 

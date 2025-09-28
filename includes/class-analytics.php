@@ -409,17 +409,11 @@ class AIVectorSearch_Analytics {
     }
 
     /**
-     * Add analytics admin page
+     * Add analytics admin page - NOTE: Analytics page is now managed by Admin_Interface class
      */
     public function add_analytics_page() {
-        add_submenu_page(
-            'options-general.php',
-            'Search Analytics',
-            'Search Analytics',
-            'manage_options',
-            'aivesese-analytics',
-            [$this, 'render_analytics_page_template']
-        );
+        // Analytics page is now handled by the main Admin_Interface class
+        // This method is kept for backward compatibility but no longer used
     }
 
     /**

@@ -65,6 +65,22 @@ if (!function_exists('aivesese_passthru')) {
     }
 }
 
+if (!function_exists('aivesese_get_search_results_limit')) {
+    function aivesese_get_search_results_limit(): int {
+        $limit = intval(get_option('aivesese_search_results_limit', 20));
+
+        if ($limit < 1) {
+            return 20;
+        }
+
+        if ($limit > 100) {
+            return 100;
+        }
+
+        return $limit;
+    }
+}
+
 // Add upgrade notice for existing users
 add_action('admin_notices', function() {
     if (!current_user_can('manage_options')) {
@@ -97,10 +113,10 @@ add_action('admin_notices', function() {
         echo '<li>🔗 <strong>Connection testing:</strong> <code>wp aivs test-connection</code></li>';
         echo '</ul>';
         echo '<p><strong>Setup:</strong> Add your PostgreSQL connection string in ';
-        echo '<a href="' . admin_url('options-general.php?page=aivesese') . '"><strong>Settings → AI Supabase</strong></a> ';
+        echo '<a href="' . admin_url('admin.php?page=aivesese') . '"><strong>Settings → AI Supabase</strong></a> ';
         echo 'and use WP-CLI commands for reliable schema management.</p>';
         echo '<p>';
-        echo '<a href="' . admin_url('options-general.php?page=aivesese') . '" class="button button-primary">Configure Connection</a> ';
+        echo '<a href="' . admin_url('admin.php?page=aivesese') . '" class="button button-primary">Configure Connection</a> ';
         echo '<a href="' . esc_url($dismiss_url) . '" class="button">Dismiss</a>';
         echo '</p>';
         echo '</div>';
@@ -111,8 +127,8 @@ add_action('admin_notices', function() {
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) {
     $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
-    $settings_link = '<a href="' . admin_url('options-general.php?page=aivesese') . '">Settings</a>';
-    $status_link = '<a href="' . admin_url('options-general.php?page=aivesese-status') . '">Status</a>';
+    $settings_link = '<a href="' . admin_url('admin.php?page=aivesese') . '">Settings</a>';
+    $status_link = '<a href="' . admin_url('admin.php?page=aivesese-status') . '">Status</a>';
 
     // Add WP-CLI indicator
     $cli_indicator = '';
@@ -259,7 +275,7 @@ add_action('aivesese_status_page_footer', function() {
     } else {
         echo '<div class="notice notice-warning inline">';
         echo '<p><strong>⚠️ WP-CLI is available but PostgreSQL connection string is not configured.</strong></p>';
-        echo '<p>Add your connection string in <a href="' . admin_url('options-general.php?page=aivesese') . '">Settings</a> to enable WP-CLI commands.</p>';
+        echo '<p>Add your connection string in <a href="' . admin_url('admin.php?page=aivesese') . '">Settings</a> to enable WP-CLI commands.</p>';
         echo '</div>';
     }
 

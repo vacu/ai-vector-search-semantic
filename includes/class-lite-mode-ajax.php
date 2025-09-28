@@ -129,7 +129,9 @@ class AIVectorSearch_Lite_Mode_Ajax {
         }
 
         $query = sanitize_text_field(wp_unslash($_REQUEST['query'] ?? ''));
-        $limit = intval($_REQUEST['limit'] ?? 10);
+        $configured_limit = aivesese_get_search_results_limit();
+        $requested_limit = isset($_REQUEST['limit']) ? intval($_REQUEST['limit']) : 0;
+        $limit = $requested_limit > 0 ? min($requested_limit, $configured_limit) : $configured_limit;
 
         if (empty($query) || strlen($query) < 2) {
             wp_send_json_error(['message' => 'Query too short']);
