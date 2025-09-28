@@ -12,7 +12,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 == Description ==
 
-**AI Vector Search** revolutionizes your WooCommerce store's search experience by combining traditional keyword search with cutting-edge semantic AI technology. Built on Supabase's powerful PostgreSQL backend with optional OpenAI embeddings, it delivers lightning-fast, highly relevant search results that understand customer intent, not just keywords.
+**AI Vector Search** revolutionizes your WooCommerce store's search experience by combining traditional keyword search with cutting-edge semantic AI technology.
+
+Built on Supabase's powerful PostgreSQL backend with optional OpenAI embeddings, it delivers lightning-fast, highly relevant search results that understand customer intent, not just keywords.
 
 ### 🎯 Key Features
 
@@ -43,7 +45,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 * **Zero-Result Alerts** - Get notified when customers search for products you do not stock yet.
 * **Click Tracking** - Measure which products shoppers open after searching to refine merchandising.
 
-### ?? Flexible Connection Modes
+### ⚙️ Flexible Connection Modes
 
 AI Vector Search adapts to the way you want to run search:
 * **Lite (default)** - Instant, zero-config local search with the Lite engine and optional stopword/synonym tuning.
@@ -80,7 +82,7 @@ Switch between modes any time in **Settings  AI Supabase**. Activating the mana
 * **Stores with complex product attributes** and variations
 * **Developers** seeking modern, scalable search infrastructure
 
-== Installation ==
+== 📦 Installation ==
 
 ### Quick Start (5 Minutes)
 
@@ -117,7 +119,7 @@ You can also trigger schema installation from the admin UI; both paths use the e
 2. Create a new API key
 3. Ensure billing is set up for embedding API usage
 
-== Screenshots ==
+== 📸 Screenshots ==
 
 1. Dashboard notice showing new WP-CLI support and quick setup actions.
 2. Settings menu entries added by AI Vector Search (Search Analytics, Supabase Status, Sync Products).
@@ -127,7 +129,7 @@ You can also trigger schema installation from the admin UI; both paths use the e
 6. Sync Products page with full sync, batch sync, and embeddings generation options.
 7. Setup guide for manual and WP-CLI installation, including PostgreSQL connection and OpenAI configuration.
 
-== Frequently Asked Questions ==
+== ❓ Frequently Asked Questions ==
 
 = What are the connection modes? =
 
@@ -167,7 +169,7 @@ The plugin only syncs product data (names, descriptions, prices, etc.) - no pers
 
 Yes! Each store gets its own unique Store ID, allowing multiple WooCommerce sites to use the same Supabase project while keeping data separate.
 
-== Technical Requirements ==
+== ⚡ Technical Requirements ==
 
 * **WordPress:** 6.0 or higher
 * **PHP:** 7.4 or higher (8.1+ recommended)
@@ -175,7 +177,7 @@ Yes! Each store gets its own unique Store ID, allowing multiple WooCommerce site
 * **Supabase Account:** Free tier sufficient for most stores
 * **OpenAI API Key:** Optional, only for semantic search
 
-== Privacy & Data Usage ==
+== 🔐 Privacy & Data Usage ==
 
 ### What Data is Synced?
 - Product names, descriptions, and short descriptions
@@ -196,7 +198,7 @@ Yes! Each store gets its own unique Store ID, allowing multiple WooCommerce site
 
 All communication uses HTTPS. You maintain full control over your API keys and can revoke access at any time.
 
-== Support & Professional Services ==
+== 🛠️ Support & Professional Services ==
 
 ### Community Support
 - Plugin documentation and FAQ
@@ -213,7 +215,7 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 [Contact ZZZ Solutions](https://zzzsolutions.ro) for professional setup and customization.
 
-== Changelog ==
+== 📝 Changelog ==
 
 = 0.18.2 (Latest) =
 * **New:** Top level menu for the plugin
@@ -334,7 +336,7 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 = 0.12.2 =
 * **Launch:** Initial public release with full feature set
 
-== Upgrade Notice ==
+== ⬆️ Upgrade Notice ==
 
 = 0.18.2 (Latest) =
 * **New:** Top level menu for the plugin
@@ -415,7 +417,7 @@ Major architecture improvements with Woodmart integration and enhanced search. R
 = 0.14.0 =
 Bug fixes for embedding generation and statistics. Recommended update for semantic search users.
 
-== Technical Documentation ==
+== 📚 Technical Documentation ==
 
 ### Hooks and Filters
 
