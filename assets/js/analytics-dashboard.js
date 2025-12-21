@@ -95,6 +95,10 @@ class AnalyticsDashboard {
     exportData(format) {
         const params = new URLSearchParams(window.location.search);
         params.set('export', format);
+        const exportNonce = window.aivesese_analytics?.export_nonce || '';
+        if (exportNonce) {
+            params.set('_wpnonce', exportNonce);
+        }
 
         // Create temporary link to trigger download
         const link = document.createElement('a');
@@ -269,6 +273,7 @@ class AnalyticsDashboard {
      */
     loadSearchPreview(searchTerm, modal) {
         const body = modal.querySelector('.search-preview-body');
+        const previewNonce = window.aivesese_analytics?.preview_nonce || window.aivs_preview_nonce || '';
 
         // Make AJAX request to get search results
         fetch(ajaxurl, {
@@ -277,7 +282,7 @@ class AnalyticsDashboard {
             body: new URLSearchParams({
                 action: 'aivs_preview_search',
                 term: searchTerm,
-                nonce: window.aivs_preview_nonce || ''
+                nonce: previewNonce
             })
         })
         .then(response => response.json())
@@ -341,12 +346,13 @@ class AnalyticsDashboard {
      * Update dashboard statistics
      */
     updateDashboardStats() {
+        const statsNonce = window.aivesese_analytics?.stats_nonce || window.aivs_stats_nonce || '';
         fetch(ajaxurl, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams({
                 action: 'aivs_get_live_stats',
-                nonce: window.aivs_stats_nonce || ''
+                nonce: statsNonce
             })
         })
         .then(response => response.json())

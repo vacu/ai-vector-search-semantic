@@ -274,6 +274,10 @@ class AIVectorSearch_Connection_Manager {
      * Get cart recommendations
      */
     public function get_recommendations(array $cart_ids, int $limit = 4): array {
+        if ($this->is_lite_mode()) {
+            return [];
+        }
+
         if ($this->is_api_mode()) {
             return $this->api_client->get_cart_recommendations($cart_ids, $limit);
         } else {
@@ -285,6 +289,10 @@ class AIVectorSearch_Connection_Manager {
      * Get similar products
      */
     public function get_similar_products(int $product_id, int $limit = 4): array {
+        if ($this->is_lite_mode()) {
+            return [];
+        }
+
         if ($this->is_api_mode()) {
             return $this->api_client->get_similar_products($product_id, $limit);
         } else {

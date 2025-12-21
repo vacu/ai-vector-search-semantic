@@ -78,7 +78,8 @@ $badgeClass = function(float $value, float $good, float $okay) {
     <div class="aivs-analytics-section">
         <div class="aivs-section-header">
             <h2>🔥 Popular Search Terms</h2>
-            <a href="<?php echo esc_url(add_query_arg('export', 'csv')); ?>" class="button export-csv-btn">⬇ Export CSV</a>
+            <?php $export_url = wp_nonce_url(add_query_arg('export', 'csv'), 'aivesese_export_analytics'); ?>
+            <a href="<?php echo esc_url($export_url); ?>" class="button export-csv-btn">⬇ Export CSV</a>
         </div>
 
         <?php if (!empty($popular_terms)): ?>
@@ -146,4 +147,3 @@ $badgeClass = function(float $value, float $good, float $okay) {
         <?php endif; ?>
     </div>
 </div>
-

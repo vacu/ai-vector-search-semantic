@@ -133,6 +133,100 @@ class AIVectorSearch_Product_Sync {
         return $this->connection_manager->generate_missing_embeddings();
     }
 
+    public function update_sold_counts(int $days): array {
+        if (!class_exists('WooCommerce')) {
+            return ['success' => false, 'message' => 'WooCommerce is not active.'];
+        }
+
+        if (!$this->connection_manager->is_self_hosted_mode()) {
+            return ['success' => false, 'message' => 'Sold counts can only be updated in self-hosted mode.'];
+        }
+
+        $days = max(1, (int) $days);
+        $since_timestamp = time() - ($days * DAY_IN_SECONDS);
+        $since = gmdate('Y-m-d H:i:s', $since_timestamp);
+
+        $statuses = function_exists('wc_get_is_paid_statuses') ? wc_get_is_paid_statuses() : ['processing', 'completed'];
+
+        $order_ids = wc_get_orders([
+            'status' => $statuses,
+            'limit' => -1,
+            'return' => 'ids',
+            'date_created' => '>=' . $since,
+        ]);
+
+        $supabase_client = AIVectorSearch_Supabase_Client::instance();
+        if (!$supabase_client->reset_sold_counts()) {
+            return ['success' => false, 'message' => 'Unable to reset sold counts in Supabase.'];
+        }
+
+        if (empty($order_ids)) {
+            return [
+                'success' => true,
+                'message' => 'No orders found in the selected timeframe. Sold counts were reset.',
+                'updated' => 0,
+                'failed' => 0,
+                'orders' => 0
+            ];
+        }
+
+        $counts = [];
+        foreach ($order_ids as $order_id) {
+            $order = wc_get_order($order_id);
+            if (!$order) {
+                continue;
+            }
+
+            foreach ($order->get_items('line_item') as $item) {
+                $product_id = $item->get_product_id();
+                if ($product_id <= 0) {
+                    continue;
+                }
+
+                $qty = (int) $item->get_quantity();
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                if (!isset($counts[$product_id])) {
+                    $counts[$product_id] = 0;
+                }
+                $counts[$product_id] += $qty;
+            }
+        }
+
+        if (empty($counts)) {
+            return [
+                'success' => true,
+                'message' => 'No product sales found in the selected timeframe.',
+                'updated' => 0,
+                'failed' => 0,
+                'orders' => count($order_ids)
+            ];
+        }
+
+        $updated = 0;
+        $failed = 0;
+        foreach ($counts as $product_id => $sold_count) {
+            $ok = $supabase_client->update_sold_count($product_id, $sold_count);
+            if ($ok) {
+                $updated++;
+            } else {
+                $failed++;
+            }
+        }
+
+        return [
+            'success' => $failed === 0,
+            'message' => $failed === 0
+                ? 'Sold counts updated successfully.'
+                : 'Sold counts updated with some failures.',
+            'updated' => $updated,
+            'failed' => $failed,
+            'orders' => count($order_ids)
+        ];
+    }
+
     private function transform_product(WC_Product $product): array {
         $store_id = get_option('aivesese_store');
 

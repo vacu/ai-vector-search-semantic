@@ -45,31 +45,13 @@ class AIVectorSearch_Recommendations {
     }
 
     public function render_cart_recommendations() {
-        if (get_option('aivesese_enable_cart_below', '1') !== '1') {
-            return;
+        $html = $this->get_cart_recommendations_html([
+            'respect_setting' => true,
+        ]);
+
+        if ($html) {
+            echo $html;
         }
-
-        if (!function_exists('WC') || !WC()->cart) {
-            return;
-        }
-
-        $cart_items = WC()->cart->get_cart_contents();
-        $cart_ids = array_map(function($item) {
-            return $item['product_id'];
-        }, $cart_items);
-
-        if (empty($cart_ids)) {
-            return;
-        }
-
-        // Use connection manager for recommendations
-        $recommendations = $this->connection_manager->get_recommendations($cart_ids, 4);
-
-        if (empty($recommendations)) {
-            return;
-        }
-
-        $this->render_recommendations_html($recommendations, 'You might also like');
     }
 
     public function preserve_related_order($args) {
@@ -92,12 +74,63 @@ class AIVectorSearch_Recommendations {
         return !empty($ids) ? $ids : $related;
     }
 
-    private function render_recommendations_html(array $recommendations, string $title = '') {
+    public function get_cart_recommendations_html(array $args = []): string {
+        $defaults = [
+            'title' => 'You might also like',
+            'limit' => 4,
+            'columns' => 4,
+            'wrapper_class' => '',
+            'respect_setting' => false,
+        ];
+
+        $args = array_merge($defaults, $args);
+
+        if ($args['respect_setting'] && get_option('aivesese_enable_cart_below', '1') !== '1') {
+            return '';
+        }
+
+        if (!function_exists('WC') || !WC()->cart) {
+            return '';
+        }
+
+        $cart_items = WC()->cart->get_cart_contents();
+        $cart_ids = array_map(function($item) {
+            return $item['product_id'];
+        }, $cart_items);
+
+        if (empty($cart_ids)) {
+            return '';
+        }
+
+        $limit = max(1, (int) $args['limit']);
+        $columns = max(1, (int) $args['columns']);
+        $wrapper_class = (string) $args['wrapper_class'];
+
+        // Use connection manager for recommendations
+        $recommendations = $this->connection_manager->get_recommendations($cart_ids, $limit);
+
+        if (empty($recommendations)) {
+            return '';
+        }
+
+        ob_start();
+        $this->render_recommendations_html($recommendations, (string) $args['title'], $columns, $wrapper_class);
+        return ob_get_clean();
+    }
+
+    private function render_recommendations_html(
+        array $recommendations,
+        string $title = '',
+        int $columns = 4,
+        string $wrapper_class = ''
+    ) {
         if ($title) {
             echo '<h3>' . esc_html($title) . '</h3>';
         }
 
-        echo '<ul class="products supabase-recs columns-4">';
+        $columns = max(1, $columns);
+        $classes = trim('products supabase-recs columns-' . $columns . ' ' . $wrapper_class);
+        echo '<ul class="' . esc_attr($classes) . '">';
 
         foreach ($recommendations as $recommendation) {
             $product_id = $recommendation['woocommerce_id'] ?? 0;

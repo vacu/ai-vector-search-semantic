@@ -2,9 +2,10 @@
 Contributors: calingrim
 Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
-Tested up to: 6.8
-Requires PHP: 7.4
-Stable Tag: 0.18.2
+Tested up to: 6.9
+Woocommerce tested up to: 10.4.2
+Requires PHP: 8.0
+Stable Tag: 0.18.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,6 +35,7 @@ Built on Supabase's powerful PostgreSQL backend with optional OpenAI embeddings,
 * **Woodmart Theme Support** - Seamless integration with Woodmart's live search
 * **Auto-Sync** - Automatically sync products when saved/updated
 * **Batch Processing** - Handle large catalogs with intelligent batching
+* **Elementor Support** - Cart recommendations widget for Elementor page builder
 
 **Developer-Friendly:**
 * **Secure Key Management** - Encrypted storage of API keys with master key support
@@ -52,7 +54,7 @@ AI Vector Search adapts to the way you want to run search:
 * **Self-Hosted Supabase** - Connect your own Supabase project for scalable full-text, vector, and SKU search without leaving your infrastructure.
 * **Managed API Service** - Activate with a license key to let us host the stack while you manage settings in WordPress.
 
-Switch between modes any time in **Settings  AI Supabase**. Activating the managed API prompts for your license key, while Supabase mode uses your project URL, service key, and optional OpenAI key.
+Switch between modes any time in **AI Vector Search -> Settings**. Activating the managed API prompts for your license key, while Supabase mode uses your project URL, service key, and optional OpenAI key.
 
 ### 🔒 Security & Privacy First
 
@@ -87,7 +89,7 @@ Switch between modes any time in **Settings  AI Supabase**. Activating the mana
 ### Quick Start (5 Minutes)
 
 1. **Install & Activate** the plugin from WordPress admin or upload manually.
-2. **Use Lite Mode instantly** - search works locally out of the box. Visit **Settings  AI Supabase** to adjust Lite stopwords, synonyms, or index limits if you need to tune results.
+2. **Use Lite Mode instantly** - search works locally out of the box. Visit **AI Vector Search -> Settings** to adjust Lite stopwords, synonyms, or index limits if you need to tune results.
 3. **(Optional) Connect Supabase for self-hosted search:**
    - Create a free account at [supabase.com](https://supabase.com) and start a new project.
    - Copy your project URL and service key into the plugin settings.
@@ -95,7 +97,7 @@ Switch between modes any time in **Settings  AI Supabase**. Activating the mana
 4. **(Optional) Enable Semantic Search with OpenAI:**
    - Add your OpenAI API key to generate embeddings (self-hosted or API modes).
    - Choose the search mode that fits your catalog and budget.
-5. **(Optional) Run a product sync** from **Settings  Sync Products** or with `wp aivs sync-products` when Supabase is connected.
+5. **(Optional) Run a product sync** from **AI Vector Search -> Sync Products** or with `wp aivs sync-products` when Supabase is connected.
 
 ### Command Line Tools (WP-CLI)
 
@@ -135,6 +137,15 @@ You can also trigger schema installation from the admin UI; both paths use the e
 
 Lite mode runs locally and is enabled by default. Switch to self-hosted Supabase when you want scalable vector search on your own infrastructure, or activate the managed API service with your license key when you prefer a fully hosted stack. You can change modes in **Settings  AI Supabase** and the plugin will guide you through any extra steps (keys, schema install, or product sync).
 
+= When should I use each connection mode? =
+
+* **Lite Mode** - Best for: small stores (<1000 products), budget-conscious merchants, or testing the plugin
+* **Self-Hosted Supabase** - Best for: full control, larger catalogs, semantic search, international stores
+
+= Can I switch connection modes later? =
+
+Yes! You can switch between Lite, Self-Hosted, and Managed API modes at any time from Settings. Your search analytics are preserved, but you'll need to re-sync products when switching to Supabase or API modes.
+
 = Is OpenAI required? =
 
 No! The plugin works great with just Supabase for fast keyword search. OpenAI is only needed for semantic (AI) search and enhanced recommendations. You can start with keyword search and add semantic features later.
@@ -169,10 +180,18 @@ The plugin only syncs product data (names, descriptions, prices, etc.) - no pers
 
 Yes! Each store gets its own unique Store ID, allowing multiple WooCommerce sites to use the same Supabase project while keeping data separate.
 
+= How do I display cart recommendations? =
+
+You can show AI-powered recommendations based on cart contents using:
+* **Shortcode:** `[aivs_cart_recommendations]` - Add anywhere in your content
+* **Gutenberg Block:** Search for "Cart Recommendations" in the block editor
+* **Elementor Widget:** Available in Elementor's widget panel
+* **Template Function:** `<?php echo do_shortcode('[aivs_cart_recommendations]'); ?>` for theme files
+
 == ⚡ Technical Requirements ==
 
 * **WordPress:** 6.0 or higher
-* **PHP:** 7.4 or higher (8.1+ recommended)
+* **PHP:** 8.0 or higher (8.1+ recommended)
 * **WooCommerce:** 5.0 or higher
 * **Supabase Account:** Free tier sufficient for most stores
 * **OpenAI API Key:** Optional, only for semantic search
@@ -217,7 +236,22 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == 📝 Changelog ==
 
-= 0.18.2 (Latest) =
+= 0.18.3 (Latest) =
+* **New:** Cart recommendations shortcode, block, and Elementor widget for flexible placement
+* **New:** Admin tool to update product sold_count in Supabase for any selected timeframe
+* **New:** Explicit dependency-ordered class loading replaces autoloader for better reliability
+* **Fix:** Woodmart live search nonce handling with backwards-compatible fallbacks
+* **Fix:** Analytics AJAX endpoints now properly handle multiple nonce sources
+* **Fix:** Supabase client improved error handling for request failures
+* **Security:** Enhanced URL escaping throughout admin interface with esc_url()
+* **Security:** Improved nonce verification across all AJAX handlers
+* **Update:** Supabase SQL schema now fully re-runnable with DROP IF EXISTS statements
+* **Update:** Simplified RLS policies - removed problematic anon policies, keeping public read-only access
+* **Update:** Code formatting standardized to PSR-12 throughout the codebase
+* **Update:** Requires PHP 8.0+ (previously 7.4+)
+* **Dev:** Better separation of concerns in JavaScript with centralized nonce handling
+
+= 0.18.2 =
 * **New:** Top level menu for the plugin
 * **New:** Configurable search limit for search results
 * **Fix:** Analytics template
@@ -338,7 +372,22 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == ⬆️ Upgrade Notice ==
 
-= 0.18.2 (Latest) =
+= 0.18.3 (Latest) =
+* **New:** Cart recommendations shortcode, block, and Elementor widget for flexible placement
+* **New:** Admin tool to update product sold_count in Supabase for any selected timeframe
+* **New:** Explicit dependency-ordered class loading replaces autoloader for better reliability
+* **Fix:** Woodmart live search nonce handling with backwards-compatible fallbacks
+* **Fix:** Analytics AJAX endpoints now properly handle multiple nonce sources
+* **Fix:** Supabase client improved error handling for request failures
+* **Security:** Enhanced URL escaping throughout admin interface with esc_url()
+* **Security:** Improved nonce verification across all AJAX handlers
+* **Update:** Supabase SQL schema now fully re-runnable with DROP IF EXISTS statements
+* **Update:** Simplified RLS policies - removed problematic anon policies, keeping public read-only access
+* **Update:** Code formatting standardized to PSR-12 throughout the codebase
+* **Update:** Requires PHP 8.0+ (previously 7.4+)
+* **Dev:** Better separation of concerns in JavaScript with centralized nonce handling
+
+= 0.18.2 =
 * **New:** Top level menu for the plugin
 * **New:** Configurable search limit for search results
 * **Fix:** Analytics template
@@ -416,6 +465,16 @@ Major architecture improvements with Woodmart integration and enhanced search. R
 
 = 0.14.0 =
 Bug fixes for embedding generation and statistics. Recommended update for semantic search users.
+
+== 🎨 Blocks & Shortcodes ==
+
+**Cart Recommendations:**
+* Shortcode: `[aivs_cart_recommendations]`
+* Gutenberg Block: Available in block editor
+* Elementor Widget: Drag and drop widget
+
+**Similar Products:**
+Automatically displayed on product pages when recommendations are enabled.
 
 == 📚 Technical Documentation ==
 

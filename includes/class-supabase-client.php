@@ -30,16 +30,20 @@ class AIVectorSearch_Supabase_Client {
 
         if (is_wp_error($response)) {
             $this->log_error('Request failed', $response->get_error_message());
-            return [];
+            return new WP_Error('aivs_request_failed', $response->get_error_message());
         }
 
         $response_code = wp_remote_retrieve_response_code($response);
         if ($response_code >= 400) {
-            $this->log_error("HTTP {$response_code}", wp_remote_retrieve_body($response));
-            return [];
+            $body = wp_remote_retrieve_body($response);
+            $this->log_error("HTTP {$response_code}", $body);
+            return new WP_Error('aivs_http_error', $body ?: "HTTP {$response_code}");
         }
 
-        $result = json_decode(wp_remote_retrieve_body($response), true) ?: [];
+        $result = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($result)) {
+            $result = [];
+        }
 
         if ($cache_key) {
             set_transient($cache_key, $result, $cache_ttl);
@@ -89,9 +93,10 @@ class AIVectorSearch_Supabase_Client {
             return [];
         }
 
-        return $this->request('POST', '/rest/v1/rpc/store_health_check', [
+        $result = $this->request('POST', '/rest/v1/rpc/store_health_check', [
             'check_store_id' => $store_id
         ]);
+        return is_wp_error($result) ? [] : $result;
     }
 
     public function get_synced_count(): int {
@@ -105,7 +110,7 @@ class AIVectorSearch_Supabase_Client {
             'store_id' => 'eq.' . $store_id,
         ]);
 
-        return is_array($result) ? count($result) : 0;
+        return is_wp_error($result) ? 0 : count($result);
     }
 
     public function sync_products_batch(array $products): bool {
@@ -119,7 +124,7 @@ class AIVectorSearch_Supabase_Client {
             ]);
 
             if (is_wp_error($result)) {
-                $this->log_error('Upsert failed: ' . $result->get_error_message());
+                $this->log_error('Upsert failed', $result->get_error_message());
                 return false;
             }
         }
@@ -133,12 +138,13 @@ class AIVectorSearch_Supabase_Client {
             return [];
         }
 
-        return $this->request('GET', '/rest/v1/products', null, [
+        $result = $this->request('GET', '/rest/v1/products', null, [
             'select' => 'id,woocommerce_id',
             'store_id' => 'eq.' . $store_id,
             'embedding' => 'is.null',
             'limit' => $limit,
         ]);
+        return is_wp_error($result) ? [] : $result;
     }
 
     public function update_product_embedding(string $product_id, array $embedding): bool {
@@ -170,6 +176,9 @@ class AIVectorSearch_Supabase_Client {
 
         $cache_key = 'fts_' . $store . '_' . $limit . '_' . md5($term);
         $rows = $this->request('POST', '/rest/v1/rpc/fts_search', $params, [], $cache_key, 20);
+        if (is_wp_error($rows)) {
+            return [];
+        }
 
         return wp_list_pluck((array) $rows, 'woocommerce_id');
     }
@@ -192,6 +201,9 @@ class AIVectorSearch_Supabase_Client {
 
         $cache_key = 'sku_' . $store . '_' . $limit . '_' . md5($term);
         $rows = $this->request('POST', '/rest/v1/rpc/sku_search', $params, [], $cache_key, 20);
+        if (is_wp_error($rows)) {
+            return [];
+        }
 
         return wp_list_pluck((array) $rows, 'woocommerce_id');
     }
@@ -212,6 +224,9 @@ class AIVectorSearch_Supabase_Client {
             'match_threshold' => 0.78,
             'p_k' => $limit,
         ], [], 'sem_' . md5($term), 20);
+        if (is_wp_error($rows)) {
+            return [];
+        }
 
         return wp_list_pluck($rows, 'woocommerce_id');
     }
@@ -234,6 +249,9 @@ class AIVectorSearch_Supabase_Client {
 
         $cache_key = 'fuzzy_' . $store . '_' . $limit . '_' . md5($term);
         $rows = $this->request('POST', '/rest/v1/rpc/fuzzy_search', $params, [], $cache_key, 20);
+        if (is_wp_error($rows)) {
+            return [];
+        }
 
         return wp_list_pluck((array) $rows, 'woocommerce_id');
     }
@@ -244,18 +262,55 @@ class AIVectorSearch_Supabase_Client {
             return [];
         }
 
-        return $this->request('POST', '/rest/v1/rpc/get_recommendations', [
+        $result = $this->request('POST', '/rest/v1/rpc/get_recommendations', [
             'store_id' => $store,
             'cart' => $cart_ids,
             'p_k' => $limit,
         ], [], 'recs_' . md5(wp_json_encode($cart_ids)), 60);
+        return is_wp_error($result) ? [] : $result;
     }
 
     public function get_similar_products(int $product_id, int $limit = 4): array {
-        return $this->request('POST', '/rest/v1/rpc/similar_products', [
+        $result = $this->request('POST', '/rest/v1/rpc/similar_products', [
             'prod_wc_id' => $product_id,
             'k' => $limit,
         ], [], 'aivesese_sim_' . $product_id, 300);
+        return is_wp_error($result) ? [] : $result;
+    }
+
+    public function update_sold_count(int $woocommerce_id, int $sold_count): bool {
+        $store_id = get_option('aivesese_store');
+        if (!$store_id || $woocommerce_id <= 0) {
+            return false;
+        }
+
+        $result = $this->request(
+            'PATCH',
+            '/rest/v1/products',
+            ['sold_count' => $sold_count],
+            [
+                'store_id' => 'eq.' . $store_id,
+                'woocommerce_id' => 'eq.' . $woocommerce_id
+            ]
+        );
+
+        return !is_wp_error($result);
+    }
+
+    public function reset_sold_counts(): bool {
+        $store_id = get_option('aivesese_store');
+        if (!$store_id) {
+            return false;
+        }
+
+        $result = $this->request(
+            'PATCH',
+            '/rest/v1/products',
+            ['sold_count' => 0],
+            ['store_id' => 'eq.' . $store_id]
+        );
+
+        return !is_wp_error($result);
     }
 
     public function encrypt_option($value, $old_value, $option) {

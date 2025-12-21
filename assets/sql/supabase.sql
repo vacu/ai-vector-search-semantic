@@ -86,6 +86,7 @@ begin
   return new;
 end $$;
 
+drop trigger if exists tsvector_update on products;
 create trigger tsvector_update
   before insert or update
   on products
@@ -223,27 +224,16 @@ $$;
    ────────────────────────────────────────────────────────────── */
 alter table products enable row level security;
 
+drop policy if exists products_public_select on products;
+drop policy if exists products_anon_insert on products;
+drop policy if exists products_anon_update on products;
+
+-- Public read-only access for published products.
 create policy products_public_select
   on products
   for select
+  to public
   using (status = 'publish');
-
-CREATE POLICY "products_anon_insert"
-ON products FOR INSERT
-TO anon
-WITH CHECK (store_id IS NOT NULL);  -- Only allow inserts with valid store_id
-
-CREATE POLICY "products_anon_update"
-ON products FOR UPDATE
-TO anon
-USING (store_id IS NOT NULL)  -- Only update products with store_id
-WITH CHECK (store_id IS NOT NULL);  -- Ensure store_id remains valid after update
-
--- Keep the public policy for front-end access
-CREATE POLICY "products_public_select"
-ON products FOR SELECT
-TO public
-USING (status = 'publish');
 
 CREATE OR REPLACE FUNCTION fts_search(
     search_store_id uuid,
@@ -323,9 +313,6 @@ WHERE p.store_id = search_store_id
 ORDER BY similarity_score DESC
 LIMIT search_limit;
 $$;
-
--- 5. ENSURE trigram extension is available (for fuzzy search)
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE OR REPLACE FUNCTION upsert_product(product_data jsonb)
 RETURNS void

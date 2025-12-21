@@ -34,9 +34,9 @@ class AIVectorSearch_Admin_Interface {
         add_action('admin_init', [$this, 'handle_sql_update_dismiss']);
         add_action('wp_ajax_aivesese_toggle_help', [$this, 'handle_help_toggle']);
         add_action('wp_ajax_aivesese_activate_license', [$this, 'handle_license_activation']);
-        add_action('wp_ajax_aivesese_test_connection', [$this, 'handle_test_connection']);
         add_action('wp_ajax_aivesese_postgres_install_schema', [$this, 'handle_postgres_install_schema']);
         add_action('wp_ajax_aivesese_postgres_check_status', [$this, 'handle_postgres_check_status']);
+        add_action('wp_ajax_aivesese_update_sold_counts', [$this, 'handle_update_sold_counts']);
 
         $this->init_admin_body_classes();
     }
@@ -143,7 +143,7 @@ class AIVectorSearch_Admin_Interface {
         return sanitize_textarea_field(wp_unslash($value));
     }
 
-    private function sanitize_search_results_limit($value): int {
+    public function sanitize_search_results_limit($value): int {
         $limit = absint($value);
 
         if ($limit < 1) {
@@ -355,6 +355,7 @@ class AIVectorSearch_Admin_Interface {
         // Show help section only for self-hosted mode
         if ($connection_mode === 'self_hosted') {
             $this->render_help_section();
+            $this->render_sold_count_section();
         }
 
         echo '<form method="post" action="options.php">';
@@ -1049,6 +1050,7 @@ class AIVectorSearch_Admin_Interface {
             'nonce' => wp_create_nonce('aivesese_admin_nonce'),
             'license_nonce' => wp_create_nonce('aivesese_license_nonce'),
             'help_nonce' => wp_create_nonce('aivesese_help_nonce'),
+            'analytics_nonce' => wp_create_nonce('aivs_analytics_nonce'),
             'strings' => [
                 'activating' => __('Activating...', 'ai-vector-search-semantic'),
                 'processing' => __('Processing...', 'ai-vector-search-semantic'),
@@ -1089,6 +1091,7 @@ class AIVectorSearch_Admin_Interface {
                 'stats_nonce' => wp_create_nonce('aivs_stats_nonce'),
                 'tracking_nonce' => wp_create_nonce('aivs_tracking_nonce'),
                 'analytics_nonce' => wp_create_nonce('aivs_analytics_nonce'),
+                'export_nonce' => wp_create_nonce('aivesese_export_analytics'),
             ]);
         }
 
@@ -1103,7 +1106,8 @@ class AIVectorSearch_Admin_Interface {
             );
 
             wp_localize_script('aivesese-woodmart-integration', 'aivesese_woodmart', [
-                'search_nonce' => wp_create_nonce('aivs_search_nonce'),
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'search_nonce' => wp_create_nonce('aivesese_search_nonce'),
                 'tracking_nonce' => wp_create_nonce('aivs_tracking_nonce'),
                 'enabled' => '1',
             ]);
@@ -1177,9 +1181,9 @@ class AIVectorSearch_Admin_Interface {
         echo '</ul>';
         echo '<p><strong>Action required:</strong> Please update your Supabase SQL to get these features:</p>';
         echo '<ol style="margin-left: 20px;">';
-        echo '<li>Go to <a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '"><strong>Settings → AI Supabase</strong></a></li>';
+        echo '<li>Go to <a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '"><strong>Settings - AI Supabase</strong></a></li>';
         echo '<li>Expand the <strong>"Setup Guide"</strong> section</li>';
-        echo '<li>Copy the updated SQL and run it in <strong>Supabase → SQL Editor</strong></li>';
+        echo '<li>Copy the updated SQL and run it in <strong>Supabase - SQL Editor</strong></li>';
         echo '<li>The new functions will be added/updated automatically</li>';
         echo '</ol>';
         echo '<p>';
@@ -1215,6 +1219,20 @@ class AIVectorSearch_Admin_Interface {
         // Use template file instead of inline HTML
         $template_vars = compact('connection_mode', 'value', 'has_value');
         $this->load_template('postgres-connection', $template_vars);
+    }
+
+    /**
+     * Render sold count update section (self-hosted only).
+     */
+    private function render_sold_count_section() {
+        $ranges = [
+            '7' => 'Last 7 days',
+            '30' => 'Last 30 days',
+            '90' => 'Last 90 days',
+        ];
+
+        $template_vars = compact('ranges');
+        $this->load_template('sold-count-update', $template_vars);
     }
 
     /**
@@ -1270,6 +1288,31 @@ class AIVectorSearch_Admin_Interface {
 
         $status = \ZZZSolutions\VectorSearch\Migrations\Runner::getStatus();
         wp_send_json_success($status);
+    }
+
+    /**
+     * Handle sold count update via AJAX.
+     */
+    public function handle_update_sold_counts() {
+        check_ajax_referer('aivesese_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized access']);
+            return;
+        }
+
+        $days = isset($_POST['days']) ? absint($_POST['days']) : 30;
+        if ($days < 1) {
+            $days = 30;
+        }
+
+        $result = $this->product_sync->update_sold_counts($days);
+
+        if (!empty($result['success'])) {
+            wp_send_json_success($result);
+        }
+
+        wp_send_json_error($result);
     }
 
     /**
@@ -1357,6 +1400,23 @@ class AIVectorSearch_Admin_Interface {
     }
 
     /**
+     * Render notice when Supabase connection is not configured
+     */
+    private function render_connection_required_notice() {
+        echo '<div class="notice notice-warning inline">';
+        echo '<h3>⚙️ Configuration Required</h3>';
+        echo '<p>Please configure your Supabase connection settings above to use the schema installation features.</p>';
+        echo '<p>You need to provide:</p>';
+        echo '<ul style="margin-left: 20px;">';
+        echo '<li>Supabase URL</li>';
+        echo '<li>Supabase API Key (anon)</li>';
+        echo '<li>Store ID</li>';
+        echo '</ul>';
+        echo '<p><strong>Scroll up</strong> and fill in the required fields, then click "Save Changes".</p>';
+        echo '</div>';
+    }
+
+    /**
      * Add body classes for better CSS targeting
      */
     public function add_admin_body_class($classes) {
@@ -1379,6 +1439,7 @@ class AIVectorSearch_Admin_Interface {
      * Load template file helper method (NEW)
      */
     private function load_template($template_name, $vars = []) {
+        $template_name = basename((string) $template_name);
         $template_path = AIVESESE_PLUGIN_PATH . "assets/templates/{$template_name}.php";
 
         if (file_exists($template_path)) {
@@ -1395,6 +1456,7 @@ class AIVectorSearch_Admin_Interface {
      * Enhanced template loading with error handling (NEW)
      */
     private function load_template_with_fallback($template_name, $vars = [], $fallback_content = '') {
+        $template_name = basename((string) $template_name);
         $template_path = AIVESESE_PLUGIN_PATH . "assets/templates/{$template_name}.php";
 
         if (file_exists($template_path)) {

@@ -1,41 +1,29 @@
 <?php
+
 /**
  * Plugin Name: AI Vector Search (Semantic)
  * Description: Supabase‑powered WooCommerce search with optional semantic matching, live‑search support, and product recommendation.
- * Version: 0.18.2
+ * Version: 0.18.3
  * Author: ZZZ Solutions
  * License: GPLv2 or later
  * Text Domain: ai-vector-search-semantic
  * Domain Path: /languages
  * Requires at least: 6.0
- * Tested up to: 6.8
- * Requires PHP: 7.4
- * Stable Tag: 0.18.2
+ * Tested up to: 6.9
+ * Woocommerce tested up to: 10.4.2
+ * Requires PHP: 8.0
+ * Stable Tag: 0.18.3
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIVESESE_PLUGIN_VERSION', '0.18.2');
+define('AIVESESE_PLUGIN_VERSION', '0.18.3');
 define('AIVESESE_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('AIVESESE_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Autoloader for plugin classes
-spl_autoload_register(function ($class) {
-    if (strpos($class, 'AIVectorSearch_') !== 0) {
-        return;
-    }
-
-    $class_file = str_replace('_', '/', substr($class, 15)); // Remove 'AIVectorSearch_' prefix
-    $file_path = AIVESESE_PLUGIN_PATH . 'includes/class-' . strtolower($class_file) . '.php';
-
-    if (file_exists($file_path)) {
-        require_once $file_path;
-    }
-});
-
-// Load plugin classes
+// Load plugin classes in dependency order
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-encryption-manager.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-supabase-client.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-api-client.php';
@@ -44,6 +32,7 @@ require_once AIVESESE_PLUGIN_PATH . 'includes/class-openai-client.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-product-sync.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-search-handler.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-recommendations.php';
+require_once AIVESESE_PLUGIN_PATH . 'includes/class-recommendations-integrations.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-admin-interface.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-analytics.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-plugin.php';
@@ -51,7 +40,8 @@ require_once AIVESESE_PLUGIN_PATH . 'includes/class-lite-engine.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-lite-mode-ajax.php';
 
 // Initialize the plugin
-function aivesese_init() {
+function aivesese_init()
+{
     return AIVectorSearch_Plugin::instance();
 }
 
@@ -60,13 +50,15 @@ add_action('plugins_loaded', 'aivesese_init');
 
 // Legacy function for backward compatibility
 if (!function_exists('aivesese_passthru')) {
-    function aivesese_passthru($value) {
+    function aivesese_passthru($value)
+    {
         return is_string($value) ? $value : '';
     }
 }
 
 if (!function_exists('aivesese_get_search_results_limit')) {
-    function aivesese_get_search_results_limit(): int {
+    function aivesese_get_search_results_limit(): int
+    {
         $limit = intval(get_option('aivesese_search_results_limit', 20));
 
         if ($limit < 1) {
@@ -82,7 +74,7 @@ if (!function_exists('aivesese_get_search_results_limit')) {
 }
 
 // Add upgrade notice for existing users
-add_action('admin_notices', function() {
+add_action('admin_notices', function () {
     if (!current_user_can('manage_options')) {
         return;
     }
@@ -113,10 +105,10 @@ add_action('admin_notices', function() {
         echo '<li>🔗 <strong>Connection testing:</strong> <code>wp aivs test-connection</code></li>';
         echo '</ul>';
         echo '<p><strong>Setup:</strong> Add your PostgreSQL connection string in ';
-        echo '<a href="' . admin_url('admin.php?page=aivesese') . '"><strong>Settings → AI Supabase</strong></a> ';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '"><strong>Settings - AI Supabase</strong></a> ';
         echo 'and use WP-CLI commands for reliable schema management.</p>';
         echo '<p>';
-        echo '<a href="' . admin_url('admin.php?page=aivesese') . '" class="button button-primary">Configure Connection</a> ';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '" class="button button-primary">Configure Connection</a> ';
         echo '<a href="' . esc_url($dismiss_url) . '" class="button">Dismiss</a>';
         echo '</p>';
         echo '</div>';
@@ -124,11 +116,11 @@ add_action('admin_notices', function() {
 });
 
 // Add plugin action links
-add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) {
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), function ($links) {
     $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
-    $settings_link = '<a href="' . admin_url('admin.php?page=aivesese') . '">Settings</a>';
-    $status_link = '<a href="' . admin_url('admin.php?page=aivesese-status') . '">Status</a>';
+    $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">Settings</a>';
+    $status_link = '<a href="' . esc_url(admin_url('admin.php?page=aivesese-status')) . '">Status</a>';
 
     // Add WP-CLI indicator
     $cli_indicator = '';
@@ -155,7 +147,7 @@ add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) 
 }, 10, 1);
 
 // Add plugin row meta
-add_filter('plugin_row_meta', function($links, $file) {
+add_filter('plugin_row_meta', function ($links, $file) {
     if ($file === plugin_basename(__FILE__)) {
         $row_meta = [
             'docs' => '<a href="https://zzzsolutions.ro/docs/ai-search" target="_blank">Documentation</a>',
@@ -170,7 +162,7 @@ add_filter('plugin_row_meta', function($links, $file) {
 }, 10, 2);
 
 // Add admin body class for styling
-add_filter('admin_body_class', function($classes) {
+add_filter('admin_body_class', function ($classes) {
     $screen = get_current_screen();
     if ($screen && strpos($screen->id, 'aivesese') !== false) {
         $connection_mode = get_option('aivesese_connection_mode', 'lite');
@@ -179,7 +171,8 @@ add_filter('admin_body_class', function($classes) {
     return $classes;
 });
 
-add_action('plugins_loaded', function() {
+// Run database updates on plugin version change
+add_action('plugins_loaded', function () {
     $current_version = get_option('aivesese_plugin_version', '0');
 
     if (version_compare($current_version, AIVESESE_PLUGIN_VERSION, '<')) {
@@ -189,7 +182,8 @@ add_action('plugins_loaded', function() {
     }
 });
 
-function aivesese_update_database() {
+function aivesese_update_database()
+{
     // Create/update analytics table
     $analytics = AIVectorSearch_Analytics::instance();
     $analytics->create_table();
@@ -206,7 +200,7 @@ if (defined('WP_CLI') && WP_CLI) {
 }
 
 // Add PostgreSQL connection string to encryption manager
-add_filter('pre_update_option_aivesese_postgres_connection_string', function($value, $old_value, $option) {
+add_filter('pre_update_option_aivesese_postgres_connection_string', function ($value, $old_value, $option) {
     if (empty($value)) {
         return $value;
     }
@@ -215,7 +209,7 @@ add_filter('pre_update_option_aivesese_postgres_connection_string', function($va
     return wp_json_encode($encryption_manager->encrypt($value));
 }, 10, 3);
 
-add_filter('option_aivesese_postgres_connection_string', function($value) {
+add_filter('option_aivesese_postgres_connection_string', function ($value) {
     if (empty($value)) {
         return $value;
     }
@@ -230,7 +224,7 @@ add_filter('option_aivesese_postgres_connection_string', function($value) {
 });
 
 // Add WP-CLI commands help to status page
-add_action('aivesese_status_page_footer', function() {
+add_action('aivesese_status_page_footer', function () {
     if (!defined('WP_CLI') || !WP_CLI) {
         return;
     }
@@ -271,62 +265,56 @@ add_action('aivesese_status_page_footer', function() {
         echo '<li><code>wp aivs sync-products</code> - Sync your products</li>';
         echo '<li><code>wp aivs check-schema</code> - Verify everything is working</li>';
         echo '</ol>';
-
     } else {
         echo '<div class="notice notice-warning inline">';
         echo '<p><strong>⚠️ WP-CLI is available but PostgreSQL connection string is not configured.</strong></p>';
-        echo '<p>Add your connection string in <a href="' . admin_url('admin.php?page=aivesese') . '">Settings</a> to enable WP-CLI commands.</p>';
+        echo '<p>Add your connection string in <a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">Settings</a> to enable WP-CLI commands.</p>';
         echo '</div>';
     }
 
     echo '</div>';
 
     // Add styles
-    ?>
+?>
     <style>
-    .wp-cli-status-section {
-        margin-top: 30px;
-        padding: 20px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        border-left: 4px solid #0073aa;
-    }
+        .wp-cli-status-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #0073aa;
+        }
 
-    .cli-commands-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 15px;
-        margin: 20px 0;
-    }
+        .cli-commands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
 
-    .cli-command-card {
-        background: #fff;
-        padding: 15px;
-        border-radius: 6px;
-        border-left: 3px solid #46b450;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+        .cli-command-card {
+            background: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #46b450;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
 
-    .cli-command-card code {
-        display: block;
-        background: #23282d;
-        color: #46b450;
-        padding: 8px 12px;
-        border-radius: 4px;
-        margin-bottom: 10px;
-        font-weight: bold;
-    }
+        .cli-command-card code {
+            display: block;
+            background: #23282d;
+            color: #46b450;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
 
-    .cli-command-card p {
-        margin: 0;
-        color: #666;
-        font-size: 14px;
-    }
+        .cli-command-card p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
     </style>
-    <?php
+<?php
 });
-
-// Update version for CLI upgrade notice
-if (!get_option('aivesese_plugin_version') || version_compare(get_option('aivesese_plugin_version'), AIVESESE_PLUGIN_VERSION, '<')) {
-    update_option('aivesese_plugin_version', AIVESESE_PLUGIN_VERSION);
-}

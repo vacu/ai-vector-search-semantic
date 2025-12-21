@@ -8,6 +8,16 @@ class WoodmartIntegration {
         this.searchCache = new Map();
         this.currentRequest = null;
         this.debounceTimer = null;
+        this.ajaxUrl = (window.aivesese_woodmart && window.aivesese_woodmart.ajax_url)
+            || (window.aivs_search_data && window.aivs_search_data.ajax_url)
+            || window.ajaxurl
+            || '';
+        this.searchNonce = (window.aivesese_woodmart && window.aivesese_woodmart.search_nonce)
+            || (window.aivs_search_data && window.aivs_search_data.nonce)
+            || '';
+        this.trackingNonce = (window.aivesese_woodmart && window.aivesese_woodmart.tracking_nonce)
+            || (window.aivesese_analytics && window.aivesese_analytics.tracking_nonce)
+            || '';
         this.init();
     }
 
@@ -119,16 +129,21 @@ class WoodmartIntegration {
         // Show loading state
         this.showLoadingState(inputElement);
 
+        if (!this.ajaxUrl) {
+            this.showNoResults(inputElement, query);
+            return;
+        }
+
         // Make AJAX request
         const requestData = {
             action: 'aivs_woodmart_search',
             query: query,
             limit: 10,
-            nonce: window.aivs_search_nonce || ''
+            nonce: this.searchNonce
         };
 
         this.currentRequest = jQuery.ajax({
-            url: window.ajaxurl,
+            url: this.ajaxUrl,
             type: 'POST',
             data: requestData,
             timeout: 10000,
@@ -455,14 +470,18 @@ class WoodmartIntegration {
         }
 
         this.analyticsTimeout = setTimeout(() => {
-            fetch(window.ajaxurl, {
+            if (!this.ajaxUrl) {
+                return;
+            }
+
+            fetch(this.ajaxUrl, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: new URLSearchParams({
                     action: 'aivs_track_event',
                     event_type: eventType,
                     event_data: JSON.stringify(data),
-                    nonce: window.aivs_tracking_nonce || ''
+                    nonce: this.trackingNonce
                 })
             }).catch(error => {
                 console.log('Analytics tracking failed:', error);
@@ -514,7 +533,8 @@ class WoodmartIntegration {
 // Initialize Woodmart integration when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize if Woodmart integration is enabled
-    if (window.aivs_woodmart_enabled === '1') {
+    const enabled = window.aivesese_woodmart && window.aivesese_woodmart.enabled === '1';
+    if (enabled) {
         new WoodmartIntegration();
     }
 });

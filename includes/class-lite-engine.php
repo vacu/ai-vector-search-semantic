@@ -264,9 +264,6 @@ class AIVectorSearch_Lite_Engine {
         // Convert to lowercase and remove HTML
         $text = strtolower(wp_strip_all_tags($text));
 
-        // Handle Romanian diacritics
-        $text = $this->normalize_romanian_text($text);
-
         // Split on non-alphanumeric characters
         $tokens = preg_split('/[^\p{L}\p{N}]+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
 
@@ -406,18 +403,6 @@ class AIVectorSearch_Lite_Engine {
     private function get_product_categories(WC_Product $product): array {
         $terms = wp_get_post_terms($product->get_id(), 'product_cat', ['fields' => 'names']);
         return (!empty($terms) && !is_wp_error($terms)) ? $terms : [];
-    }
-
-    /**
-     * Normalize Romanian text (handle diacritics)
-     */
-    private function normalize_romanian_text(string $text): string {
-        $replacements = [
-            'ă' => 'a', 'â' => 'a', 'î' => 'i', 'ș' => 's', 'ț' => 't',
-            'Ă' => 'a', 'Â' => 'a', 'Î' => 'i', 'Ș' => 's', 'Ț' => 't'
-        ];
-
-        return strtr($text, $replacements);
     }
 
     /**

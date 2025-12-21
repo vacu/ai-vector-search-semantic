@@ -46,7 +46,11 @@ class AIVectorSearch_Search_Handler {
             return;
         }
 
-        // Register AJAX handlers directly
+        // Register AJAX handlers for both our custom endpoint and original Woodmart endpoint
+        add_action('wp_ajax_aivs_woodmart_search', [$this, 'handle_woodmart_ajax_search']);
+        add_action('wp_ajax_nopriv_aivs_woodmart_search', [$this, 'handle_woodmart_ajax_search']);
+
+        // Keep support for original Woodmart endpoint for backward compatibility
         add_action('wp_ajax_woodmart_ajax_search', [$this, 'handle_woodmart_ajax_search']);
         add_action('wp_ajax_nopriv_woodmart_ajax_search', [$this, 'handle_woodmart_ajax_search']);
 
@@ -55,6 +59,9 @@ class AIVectorSearch_Search_Handler {
 
         // Fallback method using pre_get_posts
         add_action('pre_get_posts', [$this, 'intercept_woodmart_query'], 1);
+
+        // Enqueue nonce for frontend
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_search_nonce']);
     }
 
     /**
@@ -67,19 +74,44 @@ class AIVectorSearch_Search_Handler {
     }
 
     /**
+     * Enqueue search nonce for frontend
+     */
+    public function enqueue_search_nonce() {
+        wp_localize_script('jquery', 'aivs_search_data', [
+            'nonce' => wp_create_nonce('aivesese_search_nonce'),
+            'ajax_url' => admin_url('admin-ajax.php')
+        ]);
+    }
+
+    /**
      * Handle Woodmart AJAX search with AI results and analytics
      */
     public function handle_woodmart_ajax_search() {
+        // Verify nonce for our custom endpoint
+        $action = isset($_REQUEST['action']) ? sanitize_key($_REQUEST['action']) : '';
+        if ($action === 'aivs_woodmart_search') {
+            if (!wp_verify_nonce($_REQUEST['nonce'] ?? '', 'aivesese_search_nonce')) {
+                wp_send_json_error(['message' => 'Security check failed']);
+                return;
+            }
+        }
+        // For backward compatibility with original Woodmart endpoint, we're more lenient
+        // but still sanitize all inputs
+
         if (!$this->is_search_enabled()) {
             wp_send_json(['suggestions' => []]);
             return;
         }
 
         $query = sanitize_text_field(wp_unslash($_REQUEST['query'] ?? ''));
-        $number = intval($_REQUEST['number'] ?? 20);
+        $number = intval($_REQUEST['number'] ?? $_REQUEST['limit'] ?? 20);
 
         if (strlen($query) < 3) {
-            wp_send_json(['suggestions' => []]);
+            if ($action === 'aivs_woodmart_search') {
+                wp_send_json_success([]);
+            } else {
+                wp_send_json(['suggestions' => []]);
+            }
             return;
         }
 
@@ -92,6 +124,7 @@ class AIVectorSearch_Search_Handler {
 
         // Build suggestions for Woodmart
         $suggestions = [];
+        $results = [];
 
         if (!empty($product_ids)) {
             foreach ($product_ids as $product_id) {
@@ -99,6 +132,9 @@ class AIVectorSearch_Search_Handler {
                 if (!$product || $product->get_status() !== 'publish') {
                     continue;
                 }
+
+                $image_id = get_post_thumbnail_id($product_id);
+                $image_url = $image_id ? wp_get_attachment_image_src($image_id, 'woocommerce_gallery_thumbnail')[0] : '';
 
                 $suggestions[] = [
                     'value' => $product->get_name(),
@@ -111,10 +147,26 @@ class AIVectorSearch_Search_Handler {
                     'sku' => $product->get_sku() ? 'SKU: ' . $product->get_sku() : '',
                     'group' => 'product'
                 ];
+
+                $results[] = [
+                    'id' => $product_id,
+                    'name' => $product->get_name(),
+                    'url' => add_query_arg([
+                        'from_search' => '1',
+                        'search_term' => urlencode($query)
+                    ], get_permalink($product_id)),
+                    'price' => $product->get_price_html(),
+                    'image' => $image_url,
+                    'sku' => $product->get_sku()
+                ];
             }
         }
 
-        wp_send_json(['suggestions' => $suggestions]);
+        if ($action === 'aivs_woodmart_search') {
+            wp_send_json_success($results);
+        } else {
+            wp_send_json(['suggestions' => $suggestions]);
+        }
         exit;
     }
 
@@ -128,7 +180,8 @@ class AIVectorSearch_Search_Handler {
         }
 
         // Only for Woodmart search
-        if (!isset($_REQUEST['action']) || $_REQUEST['action'] !== 'woodmart_ajax_search') {
+        $action = isset($_REQUEST['action']) ? sanitize_key($_REQUEST['action']) : '';
+        if ($action !== 'woodmart_ajax_search') {
             return;
         }
 

@@ -74,7 +74,7 @@
     box-shadow: 0 8px 22px rgba(34, 113, 177, 0.14);
 }
 
-.connection-mode-selector .connection-option input[type="radio"]:checked + .option-card,
+.connection-mode-selector .connection-option input[type="radio"]:checked+.option-card,
 .connection-mode-selector label.connection-option.active .option-card {
     border-color: #00a32a;
     background: #f5fbf5;
@@ -299,6 +299,7 @@
 }
 
 @media (max-width: 782px) {
+
     .connection-mode-selector .connection-modes,
     .connection-mode-selector:not(.enhanced) {
         grid-template-columns: 1fr;
@@ -390,7 +391,7 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     border: 1px solid #dcdcde;
     border-radius: 6px;
     background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .ai-supabase-help__summary {
@@ -419,7 +420,7 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     transform: rotate(180deg);
 }
 
-.ai-supabase-help details > *:not(.ai-supabase-help__summary) {
+.ai-supabase-help details>*:not(.ai-supabase-help__summary) {
     padding: 0 16px 16px;
 }
 
@@ -428,6 +429,30 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     font-weight: 400;
     margin-left: 8px;
     font-size: 13px;
+}
+
+/* ==========================================================================
+   Sold Count Update
+   ========================================================================== */
+
+.aivesese-sold-count {
+    margin: 20px 0;
+    padding: 16px 18px;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.aivesese-sold-count-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.aivesese-sold-count-status {
+    margin-top: 10px;
 }
 
 /* ==========================================================================
@@ -507,11 +532,11 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     margin-top: 16px;
 }
 
-.aivesese-services-banner > div:first-child {
+.aivesese-services-banner>div:first-child {
     font-size: 24px;
 }
 
-.aivesese-services-banner > div:nth-child(2) {
+.aivesese-services-banner>div:nth-child(2) {
     flex: 1 1 auto;
 }
 
@@ -540,7 +565,7 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     margin: 15px 0;
 }
 
-.aivesese-welcome-notice .connection-cards > div {
+.aivesese-welcome-notice .connection-cards>div {
     padding: 15px;
     border: 2px solid;
     border-radius: 8px;
@@ -578,7 +603,7 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     border-radius: 8px;
     padding: 20px;
     text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .aivs-stat-card h3 {
@@ -596,9 +621,17 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     margin: 10px 0;
 }
 
-.aivs-stat-good { color: #46b450; }
-.aivs-stat-okay { color: #ffb900; }
-.aivs-stat-poor { color: #dc3232; }
+.aivs-stat-good {
+    color: #46b450;
+}
+
+.aivs-stat-okay {
+    color: #ffb900;
+}
+
+.aivs-stat-poor {
+    color: #dc3232;
+}
 
 .aivs-stat-card small {
     color: #666;
@@ -686,7 +719,7 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     border-radius: 8px;
     padding: 20px;
     margin: 20px 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .sync-actions .card h3 {
@@ -828,8 +861,13 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* ==========================================================================
@@ -899,7 +937,7 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     border-radius: 12px;
     padding: 24px;
     margin: 40px 0 30px 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     clear: both;
     position: relative;
     z-index: 1;
@@ -928,13 +966,13 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     border: 1px solid #e1e5e9;
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
 }
 
 .comparison-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .comparison-item strong {
@@ -1000,15 +1038,17 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
 }
 
 .connection-option-disabled .api-service-preview {
-    background: rgba(255,255,255,0.5);
+    background: rgba(255, 255, 255, 0.5);
     border: 2px dashed #ccc;
     border-radius: 8px;
     padding: 20px;
     text-align: center;
     height: 100%;
     box-sizing: border-box;
-    pointer-events: none; /* Completely disable clicking */
-    transition: none; /* Remove any hover effects */
+    pointer-events: none;
+    /* Completely disable clicking */
+    transition: none;
+    /* Remove any hover effects */
 }
 
 .connection-option-disabled .api-service-preview h5 {
@@ -1051,6 +1091,10 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     flex-direction: column;
 }
 
+.upgrade-option-card.premium {
+    display: none;
+}
+
 /* ==========================================================================
    Setup Instructions
    ========================================================================== */
@@ -1091,5 +1135,3 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
 .setup-cli-list li {
     margin: 4px 0;
 }
-
-

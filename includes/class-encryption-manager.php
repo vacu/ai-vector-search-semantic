@@ -163,9 +163,21 @@ class AIVectorSearch_Encryption_Manager {
             return;
         }
 
+        // Check if notice was dismissed
+        if (get_option('aivesese_master_key_notice_dismissed')) {
+            return;
+        }
+
+        // Handle dismissal
+        if (isset($_GET['aivesese_dismiss_master_key']) && check_admin_referer('aivesese_master_key_nonce')) {
+            update_option('aivesese_master_key_notice_dismissed', time());
+            wp_safe_redirect(remove_query_arg(['aivesese_dismiss_master_key', '_wpnonce']));
+            exit;
+        }
+
         // Only show on relevant admin pages
         $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-        $allowed = ['plugins', 'plugins-network', 'settings_page_aivesese'];
+        $allowed = ['plugins', 'plugins-network', 'settings_page_aivesese', 'toplevel_page_aivesese'];
         if (!$screen || !in_array($screen->id, $allowed, true)) {
             return;
         }
@@ -176,10 +188,16 @@ class AIVectorSearch_Encryption_Manager {
             $key = '';
         }
 
-        echo '<div class="notice notice-warning"><p>';
+        $dismiss_url = wp_nonce_url(
+            add_query_arg('aivesese_dismiss_master_key', '1'),
+            'aivesese_master_key_nonce'
+        );
+
+        echo '<div class="notice notice-warning is-dismissible"><p>';
         echo '<strong>AI Supabase Search:</strong> No master key defined for secret encryption.<br>';
         echo 'Add the following line to your <code>wp-config.php</code> above <code>/* That\'s all, stop editing! */</code>:';
         echo '<pre>define(\'AIVESESE_MASTER_KEY_B64\', \'' . esc_html($key) . '\');</pre>';
+        echo '<p><a href="' . esc_url($dismiss_url) . '" class="button">Dismiss (I\'ll do this later)</a></p>';
         echo '</p></div>';
     }
 }

@@ -14,6 +14,7 @@ class AIVectorSearchAdmin {
         this.initHelpToggle();
         this.initFormSpinners();
         this.initAnalyticsNotices();
+        this.initSoldCountUpdate();
     }
 
     /**
@@ -131,7 +132,7 @@ class AIVectorSearchAdmin {
                 body: new URLSearchParams({
                     action: 'aivesese_activate_license',
                     license_key: key,
-                    nonce: window.aivesese_nonce || ''
+                    nonce: window.aivesese_admin?.license_nonce || ''
                 })
             })
             .then(response => response.json())
@@ -266,13 +267,82 @@ class AIVectorSearchAdmin {
             body: new URLSearchParams({
                 action: 'aivs_dismiss_analytics_notice',
                 key: key,
-                nonce: window.aivs_analytics_nonce || ''
+                nonce: window.aivesese_analytics?.analytics_nonce || window.aivesese_admin?.analytics_nonce || ''
             })
         }).then(() => {
             if (notice) {
                 notice.style.display = 'none';
             }
         });
+    }
+
+    /**
+     * Sold count update (self-hosted mode)
+     */
+    initSoldCountUpdate() {
+        const button = document.getElementById('aivesese-sold-count-update');
+        const select = document.getElementById('aivesese-sold-count-range');
+        const status = document.getElementById('aivesese-sold-count-status');
+
+        if (!button || !select) {
+            return;
+        }
+
+        button.addEventListener('click', () => {
+            const days = parseInt(select.value, 10) || 30;
+            const ajaxUrl = window.aivesese_admin?.ajax_url || window.ajaxurl;
+            const nonce = window.aivesese_admin?.nonce || '';
+
+            if (!ajaxUrl) {
+                this.setSoldCountStatus(status, 'Missing AJAX endpoint.', 'error');
+                return;
+            }
+
+            button.disabled = true;
+            const previousLabel = button.textContent;
+            button.textContent = 'Updating...';
+            this.setSoldCountStatus(status, 'Updating sold counts...', 'info');
+
+            fetch(ajaxUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    action: 'aivesese_update_sold_counts',
+                    days: days,
+                    nonce: nonce
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const details = data.data || {};
+                    this.setSoldCountStatus(
+                        status,
+                        `Updated ${details.updated || 0} products from ${details.orders || 0} orders.`,
+                        'success'
+                    );
+                } else {
+                    const message = data.data?.message || 'Update failed.';
+                    this.setSoldCountStatus(status, message, 'error');
+                }
+            })
+            .catch(() => {
+                this.setSoldCountStatus(status, 'Update failed.', 'error');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = previousLabel;
+            });
+        });
+    }
+
+    setSoldCountStatus(element, message, type) {
+        if (!element) {
+            return;
+        }
+
+        element.className = `aivesese-sold-count-status aivesese-${type}`;
+        element.textContent = message;
     }
 
     /**

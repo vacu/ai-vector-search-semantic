@@ -23,7 +23,16 @@ class AIVectorSearch_Analytics {
     private function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aivs_search_analytics';
-        $this->table_name_escaped = esc_sql($this->table_name);
+        // Use wpdb->_escape() for table names with backticks for extra safety
+        // Since table name is constructed from wpdb->prefix + hardcoded string, it's safe
+        // But we validate prefix contains only safe characters
+        if (preg_match('/^[a-zA-Z0-9_]+$/', $wpdb->prefix)) {
+            $this->table_name_escaped = $this->table_name;
+        } else {
+            // Fallback: strip unsafe characters
+            $safe_prefix = preg_replace('/[^a-zA-Z0-9_]/', '', $wpdb->prefix);
+            $this->table_name_escaped = $safe_prefix . 'aivs_search_analytics';
+        }
 
         $minute = defined('MINUTE_IN_SECONDS') ? MINUTE_IN_SECONDS : 60;
         $this->cache_ttl = 5 * $minute;
@@ -46,6 +55,12 @@ class AIVectorSearch_Analytics {
         if (!wp_next_scheduled('aivs_cleanup_analytics')) {
             wp_schedule_event(time(), 'daily', 'aivs_cleanup_analytics');
         }
+
+        // AJAX handlers
+        add_action('wp_ajax_aivs_preview_search', [$this, 'handle_preview_search']);
+        add_action('wp_ajax_aivs_get_live_stats', [$this, 'handle_get_live_stats']);
+        add_action('wp_ajax_aivs_track_event', [$this, 'handle_track_event']);
+        add_action('wp_ajax_nopriv_aivs_track_event', [$this, 'handle_track_event']);
     }
 
     public function check_database_version() {
@@ -68,13 +83,14 @@ class AIVectorSearch_Analytics {
 
     /**
      * Create analytics table
+     * @return bool True on success, false on failure
      */
-    public function create_table() {
+    public function create_table(): bool {
         global $wpdb;
 
         $charset_collate = $wpdb->get_charset_collate();
 
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->table_name} (
+        $sql = "CREATE TABLE IF NOT EXISTS `{$this->table_name_escaped}` (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             search_term varchar(500) NOT NULL,
             results_found tinyint(1) NOT NULL DEFAULT 0,
@@ -91,13 +107,29 @@ class AIVectorSearch_Analytics {
         ) $charset_collate;";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+        // Suppress errors temporarily to check if table creation succeeded
+        $wpdb->suppress_errors();
         dbDelta($sql);
+        $wpdb->suppress_errors(false);
 
-        if ($wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'")) {
+        // Verify table was created
+        $table_exists = $wpdb->get_var($wpdb->prepare(
+            "SHOW TABLES LIKE %s",
+            $this->table_name
+        ));
+
+        if ($table_exists) {
             update_option('aivesese_analytics_db_version', $this->db_version);
+            $this->invalidate_cache();
+            return true;
+        } else {
+            // Log error for debugging
+            if (function_exists('error_log')) {
+                error_log('AIVectorSearch: Failed to create analytics table - ' . $wpdb->last_error);
+            }
+            return false;
         }
-
-        $this->invalidate_cache();
     }
 
     /**
@@ -392,20 +424,104 @@ class AIVectorSearch_Analytics {
 
         $data = $data ?: [];
 
-        $output = "Search Term,Search Type,Found Results,Result Count,Date,Time\n";
+        $headers = ['Search Term', 'Search Type', 'Found Results', 'Result Count', 'Date', 'Time'];
+        $output = implode(',', array_map([$this, 'escape_csv_value'], $headers)) . "\n";
         foreach ($data as $row) {
-            $output .= sprintf('"%s","%s","%s","%s","%s","%s"' . "\n",
+            $values = [
                 $row->search_term,
                 $row->search_type,
                 $row->results_found ? 'Yes' : 'No',
                 $row->results_count,
                 $row->search_date,
                 $row->search_time
-            );
+            ];
+            $output .= implode(',', array_map([$this, 'escape_csv_value'], $values)) . "\n";
         }
 
         wp_cache_set($cache_key, $output, $this->cache_group, $this->cache_ttl);
         return $output;
+    }
+
+    /**
+     * Handle analytics search preview (admin only).
+     */
+    public function handle_preview_search() {
+        check_ajax_referer('aivs_preview_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+            return;
+        }
+
+        $term = sanitize_text_field(wp_unslash($_POST['term'] ?? ''));
+        if ($term === '') {
+            wp_send_json_error(['message' => 'Search term is required']);
+            return;
+        }
+
+        $handler = AIVectorSearch_Search_Handler::instance();
+        $results = $handler->preview_search_results($term, 10);
+
+        foreach ($results as &$result) {
+            $result['search_term'] = $term;
+        }
+
+        wp_send_json_success($results);
+    }
+
+    /**
+     * Handle live stats refresh (admin only).
+     */
+    public function handle_get_live_stats() {
+        check_ajax_referer('aivs_stats_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+            return;
+        }
+
+        $stats = $this->get_search_stats(30);
+        wp_send_json_success($stats);
+    }
+
+    /**
+     * Handle frontend analytics events.
+     */
+    public function handle_track_event() {
+        check_ajax_referer('aivs_tracking_nonce', 'nonce');
+
+        $event_type = sanitize_text_field(wp_unslash($_POST['event_type'] ?? ''));
+        $raw_data = wp_unslash($_POST['event_data'] ?? '');
+        $data = json_decode($raw_data, true);
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        switch ($event_type) {
+            case 'search_performed':
+                $term = sanitize_text_field($data['query'] ?? '');
+                $results_count = isset($data['results']) ? max(0, (int) $data['results']) : 0;
+                $type = sanitize_text_field($data['search_type'] ?? 'ajax');
+                $results = $results_count > 0 ? array_fill(0, $results_count, 0) : [];
+                $this->track_search($term, $type, $results);
+                break;
+            case 'search_submitted':
+                $term = sanitize_text_field($data['query'] ?? '');
+                $this->track_search($term, 'submit', []);
+                break;
+            case 'search_result_click':
+                $term = sanitize_text_field($data['query'] ?? '');
+                $product_id = isset($data['product_id']) ? (int) $data['product_id'] : 0;
+                if ($term !== '' && $product_id > 0) {
+                    $this->track_click($term, $product_id);
+                }
+                break;
+            default:
+                wp_send_json_error(['message' => 'Unknown event type']);
+                return;
+        }
+
+        wp_send_json_success(['ok' => true]);
     }
 
     /**
@@ -549,9 +665,11 @@ class AIVectorSearch_Analytics {
 
     /**
      * Replace the table placeholder with the escaped table name for raw SQL fragments.
+     * Table names are wrapped in backticks for additional safety.
      */
     private function inject_table_name(string $sql_template): string {
-        return str_replace('{table}', $this->table_name_escaped, $sql_template);
+        // Wrap table name in backticks for MySQL identifier safety
+        return str_replace('{table}', '`' . $this->table_name_escaped . '`', $sql_template);
     }
 
     /**
@@ -565,5 +683,17 @@ class AIVectorSearch_Analytics {
             $ip = '127.0.0.1';
         }
         return substr(md5($ip . wp_salt()), 0, 10);
+    }
+
+    /**
+     * Escape CSV values and prevent spreadsheet formula injection.
+     */
+    private function escape_csv_value($value): string {
+        $value = (string) $value;
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@'], true)) {
+            $value = "'" . $value;
+        }
+        $value = str_replace('"', '""', $value);
+        return '"' . $value . '"';
     }
 }

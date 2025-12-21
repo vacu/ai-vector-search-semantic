@@ -13,6 +13,7 @@ class AIVectorSearch_Plugin {
     private $product_sync;
     private $search_handler;
     private $recommendations;
+    private $recommendations_integrations;
     private $admin_interface;
     private $analytics;
 
@@ -38,18 +39,23 @@ class AIVectorSearch_Plugin {
         $this->product_sync = AIVectorSearch_Product_Sync::instance();
         $this->search_handler = AIVectorSearch_Search_Handler::instance();
         $this->recommendations = AIVectorSearch_Recommendations::instance();
+        $this->recommendations_integrations = AIVectorSearch_Recommendations_Integrations::instance();
         $this->admin_interface = AIVectorSearch_Admin_Interface::instance();
     }
 
     private function init_hooks() {
         add_action('plugins_loaded', [$this, 'ensure_store_id'], 11);
 
-        // Plugin lifecycle hooks
-        register_activation_hook(__FILE__, [$this, 'on_activation']);
-        register_deactivation_hook(__FILE__, [$this, 'on_deactivation']);
+        // Plugin lifecycle hooks - must use main plugin file path, not this class file
+        if (defined('AIVESESE_PLUGIN_PATH')) {
+            register_activation_hook(AIVESESE_PLUGIN_PATH . 'ai-supabase-search.php', [$this, 'on_activation']);
+            register_deactivation_hook(AIVESESE_PLUGIN_PATH . 'ai-supabase-search.php', [$this, 'on_deactivation']);
+        }
 
         // Add admin notices for mode switching
         add_action('admin_notices', [$this, 'show_mode_switch_notices']);
+        add_action('admin_notices', [$this, 'show_analytics_notices']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_analytics_notice_script']);
     }
 
     public function ensure_store_id() {
@@ -113,13 +119,14 @@ class AIVectorSearch_Plugin {
         $prefixes = ['fts_', 'sem_', 'recs_', 'aivesese_sim_'];
 
         foreach ($prefixes as $prefix) {
+            $escaped_prefix = $wpdb->esc_like($prefix) . '%';
             $wpdb->query($wpdb->prepare(
                 "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-                '_transient_' . $prefix . '%'
+                '_transient_' . $escaped_prefix
             ));
             $wpdb->query($wpdb->prepare(
                 "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-                '_transient_timeout_' . $prefix . '%'
+                '_transient_timeout_' . $escaped_prefix
             ));
         }
     }
@@ -172,7 +179,7 @@ class AIVectorSearch_Plugin {
             echo '<p>Great news! Your store has <strong>' . $stats['total_searches'] . ' searches</strong> this week. ';
             echo 'We\'ve been collecting analytics data that can help you boost sales!</p>';
             echo '<p>';
-            echo '<a href="' . admin_url('admin.php?page=aivesese-analytics') . '" class="button button-primary">View Analytics Dashboard</a> ';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese-analytics')) . '" class="button button-primary">View Analytics Dashboard</a> ';
             echo '<a href="#" class="aivs-dismiss-notice" data-key="analytics_discovered">Maybe Later</a>';
             echo '</p>';
             echo '</div>';
@@ -189,39 +196,53 @@ class AIVectorSearch_Plugin {
             echo '<p>Customers searched for <strong>"' . esc_html($term) . '"</strong> ' . $count . ' times this week but found no products. ';
             echo 'This could be a significant sales opportunity!</p>';
             echo '<p>';
-            echo '<a href="' . admin_url('post-new.php?post_type=product') . '" class="button button-primary">Add Product for "' . esc_html($term) . '"</a> ';
-            echo '<a href="' . admin_url('admin.php?page=aivesese-analytics') . '" class="button">View All Opportunities</a>';
+            echo '<a href="' . esc_url(admin_url('post-new.php?post_type=product')) . '" class="button button-primary">Add Product for "' . esc_html($term) . '"</a> ';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese-analytics')) . '" class="button">View All Opportunities</a>';
             echo '</p>';
             echo '</div>';
         }
 
-        // Add dismiss handler
-        ?>
-        <script>
-        jQuery(document).on('click', '.aivs-dismiss-notice', function(e) {
-            e.preventDefault();
-            const key = jQuery(this).data('key');
-            const notice = jQuery(this).closest('.notice');
+    }
 
-            jQuery.post(ajaxurl, {
-                action: 'aivs_dismiss_analytics_notice',
-                key: key,
-                nonce: '<?php echo wp_create_nonce('aivs_analytics_nonce'); ?>'
-            }, function() {
-                notice.fadeOut();
-            });
-        });
+    public function enqueue_analytics_notice_script($hook) {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
 
-        jQuery(document).on('click', '.notice[data-dismiss-key] .notice-dismiss', function() {
-            const key = jQuery(this).parent().data('dismiss-key');
-            jQuery.post(ajaxurl, {
-                action: 'aivs_dismiss_analytics_notice',
-                key: key,
-                nonce: '<?php echo wp_create_nonce('aivs_analytics_nonce'); ?>'
-            });
-        });
-        </script>
-        <?php
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || !in_array($screen->id, ['dashboard', 'edit-product'], true)) {
+            return;
+        }
+
+        wp_localize_script('jquery', 'aivesese_analytics_notice', [
+            'nonce' => wp_create_nonce('aivs_analytics_nonce'),
+        ]);
+
+        wp_add_inline_script(
+            'jquery',
+            "jQuery(document).on('click', '.aivs-dismiss-notice', function(e) {\n" .
+            "    e.preventDefault();\n" .
+            "    const key = jQuery(this).data('key');\n" .
+            "    const notice = jQuery(this).closest('.notice');\n" .
+            "\n" .
+            "    jQuery.post(ajaxurl, {\n" .
+            "        action: 'aivs_dismiss_analytics_notice',\n" .
+            "        key: key,\n" .
+            "        nonce: window.aivesese_analytics_notice ? window.aivesese_analytics_notice.nonce : ''\n" .
+            "    }, function() {\n" .
+            "        notice.fadeOut();\n" .
+            "    });\n" .
+            "});\n" .
+            "\n" .
+            "jQuery(document).on('click', '.notice[data-dismiss-key] .notice-dismiss', function() {\n" .
+            "    const key = jQuery(this).parent().data('dismiss-key');\n" .
+            "    jQuery.post(ajaxurl, {\n" .
+            "        action: 'aivs_dismiss_analytics_notice',\n" .
+            "        key: key,\n" .
+            "        nonce: window.aivesese_analytics_notice ? window.aivesese_analytics_notice.nonce : ''\n" .
+            "    });\n" .
+            "});"
+        );
     }
 
     private function show_welcome_notice() {
@@ -250,7 +271,7 @@ class AIVectorSearch_Plugin {
         echo '<li>💰 Pay only API usage</li>';
         echo '<li>📊 Basic analytics included</li>';
         echo '</ul>';
-        echo '<p><a href="' . admin_url('admin.php?page=aivesese') . '" class="button">Configure Now</a></p>';
+        echo '<p><a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '" class="button">Configure Now</a></p>';
         echo '</div>';
 
         echo '</div>';
@@ -268,7 +289,7 @@ class AIVectorSearch_Plugin {
     private function show_api_setup_notice() {
         echo '<div class="notice notice-warning">';
         echo '<p><strong>AI Vector Search:</strong> API mode is selected but no license key is configured. ';
-        echo '<a href="' . admin_url('admin.php?page=aivesese') . '">Configure your license key</a> or ';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">Configure your license key</a> or ';
         echo '<a href="https://zzzsolutions.ro/ai-search-service" target="_blank">get a license</a>.</p>';
         echo '</div>';
     }
@@ -276,7 +297,7 @@ class AIVectorSearch_Plugin {
     private function show_self_hosted_setup_notice() {
         echo '<div class="notice notice-warning">';
         echo '<p><strong>AI Vector Search:</strong> Self-hosted mode requires Supabase configuration. ';
-        echo '<a href="' . admin_url('admin.php?page=aivesese') . '">Complete your setup</a>.</p>';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">Complete your setup</a>.</p>';
         echo '</div>';
     }
 
