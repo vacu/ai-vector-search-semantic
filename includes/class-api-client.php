@@ -1,13 +1,16 @@
 <?php
+
 /**
  * API Client for ZZZ Solutions Managed Service
  */
-class AIVectorSearch_API_Client {
+class AIVectorSearch_API_Client
+{
 
     private static $instance = null;
     private $api_base_url = 'https://api.zzzsolutions.ro/api/v1';
 
-    public static function instance() {
+    public static function instance()
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
@@ -19,20 +22,22 @@ class AIVectorSearch_API_Client {
     /**
      * Check if API mode is active
      */
-    public function is_api_mode(): bool {
+    public function is_api_mode(): bool
+    {
         return get_option('aivesese_connection_mode') === 'api' &&
-               !empty(get_option('aivesese_license_key'));
+            !empty(get_option('aivesese_license_key'));
     }
 
     /**
      * Activate license key
      */
-    public function activate_license(string $license_key): array {
+    public function activate_license(string $license_key): array
+    {
         $response = $this->request('POST', '/activate', [
             'license_key' => $license_key,
             'site_url' => home_url(),
             'site_name' => get_bloginfo('name')
-        ]);
+        ], $license_key);
 
         if (is_wp_error($response)) {
             return [
@@ -62,7 +67,8 @@ class AIVectorSearch_API_Client {
     /**
      * Get service status and usage statistics
      */
-    public function get_status(): ?array {
+    public function get_status(): ?array
+    {
         if (!$this->is_api_mode()) {
             return null;
         }
@@ -74,13 +80,18 @@ class AIVectorSearch_API_Client {
         }
 
         $data = json_decode(wp_remote_retrieve_body($response), true);
-        return $data['data'] ?? null;
+        if (!is_array($data)) {
+            return null;
+        }
+
+        return $this->normalize_status_payload($data);
     }
 
     /**
      * Full-text search via API
      */
-    public function search_fts(string $term, int $limit = 0): array {
+    public function search_fts(string $term, int $limit = 0): array
+    {
         // Use configured limit if none provided
         if ($limit === 0) {
             $limit = aivesese_get_search_results_limit();
@@ -96,7 +107,8 @@ class AIVectorSearch_API_Client {
     /**
      * Fuzzy search via API
      */
-    public function search_fuzzy(string $term, int $limit = 0): array {
+    public function search_fuzzy(string $term, int $limit = 0): array
+    {
         // Use configured limit if none provided
         if ($limit === 0) {
             $limit = aivesese_get_search_results_limit();
@@ -112,7 +124,8 @@ class AIVectorSearch_API_Client {
     /**
      * Semantic search via API
      */
-    public function search_semantic(string $term, int $limit = 0, float $threshold = 0.5): array {
+    public function search_semantic(string $term, int $limit = 0, float $threshold = 0.5): array
+    {
         // Use configured limit if none provided
         if ($limit === 0) {
             $limit = aivesese_get_search_results_limit();
@@ -129,7 +142,8 @@ class AIVectorSearch_API_Client {
     /**
      * SKU search via API
      */
-    public function search_sku(string $term, int $limit = 0): array {
+    public function search_sku(string $term, int $limit = 0): array
+    {
         // Use configured limit if none provided
         if ($limit === 0) {
             $limit = aivesese_get_search_results_limit();
@@ -145,7 +159,8 @@ class AIVectorSearch_API_Client {
     /**
      * Sync products to API
      */
-    public function sync_products(array $products): array {
+    public function sync_products(array $products): array
+    {
         $response = $this->request('POST', '/products/sync', [
             'products' => $products
         ]);
@@ -161,7 +176,8 @@ class AIVectorSearch_API_Client {
     /**
      * Batch sync products
      */
-    public function sync_products_batch(array $products): array {
+    public function sync_products_batch(array $products): array
+    {
         $response = $this->request('POST', '/products/batch', [
             'products' => $products
         ]);
@@ -177,7 +193,8 @@ class AIVectorSearch_API_Client {
     /**
      * Generate embeddings for products
      */
-    public function generate_embeddings(int $batch_size = 25, int $max_batches = 10): array {
+    public function generate_embeddings(int $batch_size = 25, int $max_batches = 10): array
+    {
         $response = $this->request('POST', '/products/embeddings', [
             'batch_size' => $batch_size,
             'max_batches' => $max_batches
@@ -194,7 +211,8 @@ class AIVectorSearch_API_Client {
     /**
      * Get cart recommendations
      */
-    public function get_cart_recommendations(array $cart_ids, int $limit = 4): array {
+    public function get_cart_recommendations(array $cart_ids, int $limit = 4): array
+    {
         $response = $this->request('POST', '/recommendations/cart', [
             'cart_ids' => $cart_ids,
             'limit' => $limit
@@ -206,7 +224,8 @@ class AIVectorSearch_API_Client {
     /**
      * Get similar products
      */
-    public function get_similar_products(int $product_id, int $limit = 4): array {
+    public function get_similar_products(int $product_id, int $limit = 4): array
+    {
         $response = $this->request('POST', '/recommendations/similar', [
             'product_id' => $product_id,
             'limit' => $limit
@@ -218,11 +237,12 @@ class AIVectorSearch_API_Client {
     /**
      * Make API request with authentication
      */
-    private function request(string $method, string $endpoint, array $body = null): array|WP_Error {
+    private function request(string $method, string $endpoint, array $body = null, ?string $license_override = null): array|WP_Error
+    {
         $store_id = get_option('aivesese_store');
-        $license_key = get_option('aivesese_license_key');
+        $license_key = $license_override ?: get_option('aivesese_license_key');
 
-        if (empty($license_key)) {
+        if (empty($license_key) && $endpoint !== '/activate') {
             return new WP_Error('no_license', 'No license key configured');
         }
 
@@ -248,7 +268,8 @@ class AIVectorSearch_API_Client {
     /**
      * Parse search response and extract product IDs
      */
-    private function parse_search_response($response): array {
+    private function parse_search_response($response): array
+    {
         if (is_wp_error($response)) {
             return [];
         }
@@ -260,7 +281,7 @@ class AIVectorSearch_API_Client {
         }
 
         // Extract woocommerce_id from response
-        return array_map(function($item) {
+        return array_map(function ($item) {
             return isset($item['woocommerce_id']) ? (int)$item['woocommerce_id'] : 0;
         }, $data['data']);
     }
@@ -268,7 +289,8 @@ class AIVectorSearch_API_Client {
     /**
      * Parse recommendations response
      */
-    private function parse_recommendations_response($response): array {
+    private function parse_recommendations_response($response): array
+    {
         if (is_wp_error($response)) {
             return [];
         }
@@ -285,7 +307,8 @@ class AIVectorSearch_API_Client {
     /**
      * Test connection to API
      */
-    public function test_connection(): array {
+    public function test_connection(): array
+    {
         $response = $this->request('GET', '/store/health');
 
         if (is_wp_error($response)) {
@@ -302,7 +325,7 @@ class AIVectorSearch_API_Client {
             return [
                 'success' => true,
                 'message' => 'Connection successful!',
-                'data' => $data['data']
+                'data' => $this->normalize_status_payload($data)
             ];
         }
 
@@ -315,7 +338,8 @@ class AIVectorSearch_API_Client {
     /**
      * Get usage statistics for display
      */
-    public function get_usage_stats(): array {
+    public function get_usage_stats(): array
+    {
         $status = $this->get_status();
 
         if (!$status) {
@@ -325,14 +349,58 @@ class AIVectorSearch_API_Client {
         return [
             'plan' => $status['subscription']['plan'] ?? 'unknown',
             'status' => $status['subscription']['status'] ?? 'unknown',
-            'products_synced' => $status['total_products'] ?? 0,
-            'searches_month' => $status['usage']['searches_this_month'] ?? 0,
-            'api_calls_today' => $status['usage']['api_calls_today'] ?? 0,
+            'products_synced' => $status['products_synced']
+                ?? $status['products_count']
+                ?? $status['total_products']
+                ?? ($status['usage_tracking']['products_synced'] ?? 0)
+                ?? ($status['usage_tracking']['productsSynced'] ?? 0)
+                ?? ($status['usageTracking']['products_synced'] ?? 0)
+                ?? ($status['usageTracking']['productsSynced'] ?? 0)
+                ?? ($status['usage']['products_synced'] ?? 0),
+            'searches_month' => $status['searches_this_month']
+                ?? ($status['usage']['searches_this_month'] ?? null)
+                ?? ($status['usage_tracking']['searches_this_month'] ?? null)
+                ?? ($status['usage_tracking']['searchesThisMonth'] ?? null)
+                ?? ($status['usageTracking']['searches_this_month'] ?? null)
+                ?? ($status['usageTracking']['searchesThisMonth'] ?? 0),
+            'api_calls_today' => $status['api_calls_today']
+                ?? ($status['usage']['api_calls_today'] ?? null)
+                ?? ($status['usage_tracking']['api_calls_today'] ?? null)
+                ?? ($status['usage_tracking']['apiCallsToday'] ?? null)
+                ?? ($status['usageTracking']['api_calls_today'] ?? null)
+                ?? ($status['usageTracking']['apiCallsToday'] ?? 0),
             'limits' => [
                 'products_limit' => $status['limits']['products'] ?? -1,
                 'searches_limit' => $status['limits']['searches'] ?? -1,
                 'api_calls_limit' => $status['limits']['api_calls'] ?? -1,
             ]
         ];
+    }
+
+    private function normalize_status_payload(array $data): array
+    {
+        $status = is_array($data['data'] ?? null) ? $data['data'] : $data;
+
+        if (!isset($status['usage_tracking']) && isset($data['usage_tracking'])) {
+            $status['usage_tracking'] = $data['usage_tracking'];
+        }
+
+        if (!isset($status['usageTracking']) && isset($data['usageTracking'])) {
+            $status['usageTracking'] = $data['usageTracking'];
+        }
+
+        if (!isset($status['products_synced']) && isset($data['products_synced'])) {
+            $status['products_synced'] = $data['products_synced'];
+        }
+
+        if (!isset($status['searches_this_month']) && isset($data['searches_this_month'])) {
+            $status['searches_this_month'] = $data['searches_this_month'];
+        }
+
+        if (!isset($status['api_calls_today']) && isset($data['api_calls_today'])) {
+            $status['api_calls_today'] = $data['api_calls_today'];
+        }
+
+        return $status;
     }
 }

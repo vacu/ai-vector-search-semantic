@@ -156,11 +156,21 @@ class AIVectorSearchAdmin {
         // License revocation function
         window.revokeLicense = () => {
             if (confirm('Are you sure you want to deactivate your license? This will switch back to self-hosted mode.')) {
-                const licenseInput = document.getElementById('aivesese_license_key');
+                const licenseInput = document.getElementById('aivesese_license_key')
+                    || document.querySelector('input[name="aivesese_license_key"]');
                 if (licenseInput) {
                     licenseInput.value = '';
                 }
-                document.querySelector('form').submit();
+
+                const selfHosted = document.querySelector('input[name="aivesese_connection_mode"][value="self_hosted"]');
+                if (selfHosted) {
+                    selfHosted.checked = true;
+                }
+
+                const form = document.querySelector('.aivesese-admin form') || document.querySelector('form');
+                if (form) {
+                    form.submit();
+                }
             }
         };
     }

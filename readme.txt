@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.9
 Woocommerce tested up to: 10.4.2
 Requires PHP: 8.0
-Stable Tag: 0.18.3
+Stable Tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -13,76 +13,46 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 == Description ==
 
-**AI Vector Search** revolutionizes your WooCommerce store's search experience by combining traditional keyword search with cutting-edge semantic AI technology.
-
-Built on Supabase's powerful PostgreSQL backend with optional OpenAI embeddings, it delivers lightning-fast, highly relevant search results that understand customer intent, not just keywords.
+Transform your WooCommerce search with AI-powered semantic technology. **AI Vector Search** delivers lightning-fast, highly relevant results that understand customer intent, not just keywords.
 
 ### 🎯 Key Features
 
-**Smart Search Technology:**
-* **Full-Text Search (FTS)** - Lightning-fast PostgreSQL-powered keyword matching
-* **Semantic Vector Search** - AI understanding of product meaning and context using OpenAI embeddings
-* **SKU & GTIN Search** - Find products by partial SKU, EAN, UPC, or ISBN codes
-* **Hybrid Search** - Combines multiple search methods for best results
-* **Instant Lite Mode** - Built-in TF-IDF engine with synonyms, stopwords, and scheduled indexing that runs without Supabase or OpenAI
+**Three Flexible Modes:**
+* **Lite Mode (Default)** - Zero-config local TF-IDF search with synonyms and stopwords. No external services required.
+* **Self-Hosted Supabase** - Full-text + vector search on your own Supabase infrastructure. You control the data and configuration.
+* **Managed API Service** - Let us host the entire stack (Supabase + OpenAI). Just activate with your license key and we handle the infrastructure, updates, and scaling.
 
-**Intelligent Recommendations:**
-* **Similar Products** - AI-powered product recommendations on product detail pages
-* **Cart Recommendations** - Smart upsell suggestions based on cart contents
-* **Category-Aware Suggestions** - Recommendations that understand product relationships
+**Smart Search:**
+* Full-text PostgreSQL search with instant results
+* AI semantic understanding via OpenAI embeddings (optional)
+* SKU, EAN, UPC, ISBN partial matching
+* Hybrid search combining multiple methods
 
-**Advanced Integrations:**
-* **Woodmart Theme Support** - Seamless integration with Woodmart's live search
-* **Auto-Sync** - Automatically sync products when saved/updated
-* **Batch Processing** - Handle large catalogs with intelligent batching
-* **Elementor Support** - Cart recommendations widget for Elementor page builder
+**AI Recommendations:**
+* Similar products on detail pages
+* Smart cart-based upsells
+* Shortcode, Gutenberg block, and Elementor widget support
 
-**Developer-Friendly:**
-* **Secure Key Management** - Encrypted storage of API keys with master key support
-* **Row-Level Security** - Built-in Supabase RLS policies
-* **Comprehensive Admin Interface** - Status monitoring, health checks, and sync tools
+**Analytics & Insights:**
+* Search volume, success rate, and CTR tracking
+* Zero-result alerts for merchandising opportunities
+* Popular search terms and click tracking
 
-**Actionable Analytics & Insights:**
-* **Search Analytics Dashboard** - Track search volume, success rate, CTR, and popular terms.
-* **Zero-Result Alerts** - Get notified when customers search for products you do not stock yet.
-* **Click Tracking** - Measure which products shoppers open after searching to refine merchandising.
+**Professional Tools:**
+* WP-CLI commands for schema management and sync
+* Encrypted API key storage with master key support
+* Auto-sync on product updates
+* Woodmart theme integration
 
-### ⚙️ Flexible Connection Modes
+### 🔒 Security & Pricing
 
-AI Vector Search adapts to the way you want to run search:
-* **Lite (default)** - Instant, zero-config local search with the Lite engine and optional stopword/synonym tuning.
-* **Self-Hosted Supabase** - Connect your own Supabase project for scalable full-text, vector, and SKU search without leaving your infrastructure.
-* **Managed API Service** - Activate with a license key to let us host the stack while you manage settings in WordPress.
+**Security:**
+All API keys encrypted in your WordPress database. Self-hosted mode gives you complete data control. HTTPS-only communications.
 
-Switch between modes any time in **AI Vector Search -> Settings**. Activating the managed API prompts for your license key, while Supabase mode uses your project URL, service key, and optional OpenAI key.
-
-### 🔒 Security & Privacy First
-
-* **Your Keys, Your Control** - All API keys stored securely in your WordPress database
-* **Encrypted Storage** - Sensitive data encrypted with configurable master keys
-* **No Data Lock-in** - Full control over your Supabase project and data
-* **HTTPS Only** - All API communications secured with SSL/TLS
-
-### 💰 Transparent Pricing
-
-**OpenAI Embedding Costs (One-time per product):**
-* 1,000 products: ~$0.05-$0.10
-* 5,000 products: ~$0.25-$0.50
-* 10,000 products: ~$0.50-$1.00
-
-**Supabase Free Tier Includes:**
-* 500MB database storage
-* 50,000 monthly queries
-* 500,000 edge function calls
-* Perfect for small to medium stores
-
-### 🎯 Perfect For
-
-* **E-commerce stores** wanting better search relevance
-* **Large catalogs** needing semantic understanding
-* **International stores** with multi-language products
-* **Stores with complex product attributes** and variations
-* **Developers** seeking modern, scalable search infrastructure
+**Costs:**
+* **Lite Mode:** Free, runs locally with no external dependencies
+* **Self-Hosted Supabase:** Free tier includes 50,000 queries/month. Optional OpenAI costs ~$0.05-$1.00 per 1,000 products (one-time)
+* **Managed API Service:** Subscription-based pricing. We handle all infrastructure costs and maintenance.
 
 == 📦 Installation ==
 
@@ -236,7 +206,23 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == 📝 Changelog ==
 
-= 0.18.3 (Latest) =
+= 1.0.0 (Latest) =
+* **Milestone:** Official stable release with production-ready feature set
+* **New:** Three flexible connection modes - Lite (local), Self-Hosted (Supabase), and Managed API Service
+* **New:** Complete WP-CLI command suite for professional database management and setup
+* **New:** Cart recommendations with shortcode, Gutenberg block, and Elementor widget support
+* **New:** Search Analytics dashboard with detailed insights, CTR tracking, and zero-result alerts
+* **New:** Advanced encryption system with master key support for secure credential storage
+* **New:** Lite Mode TF-IDF engine with synonym expansion and stopword filtering for zero-dependency search
+* **Security:** Enhanced nonce verification and URL escaping throughout admin interface
+* **Security:** Encrypted PostgreSQL connection string storage with enterprise-grade protection
+* **Performance:** Optimized admin interface with modular asset loading and template system
+* **Performance:** Improved Supabase schema with re-runnable migrations and simplified RLS policies
+* **Compatibility:** PHP 8.0+ required, tested up to WordPress 6.9 and WooCommerce 10.4.2
+* **Developer:** Better code organization following PSR-12 standards and WordPress best practices
+* **Developer:** Comprehensive hooks and filters for customization and extensibility
+
+= 0.18.3 =
 * **New:** Cart recommendations shortcode, block, and Elementor widget for flexible placement
 * **New:** Admin tool to update product sold_count in Supabase for any selected timeframe
 * **New:** Explicit dependency-ordered class loading replaces autoloader for better reliability
@@ -372,7 +358,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == ⬆️ Upgrade Notice ==
 
-= 0.18.3 (Latest) =
+= 1.0.0 (Latest) =
+🎉 **Major Milestone: Production-Ready v1.0.0!** This stable release brings together all features from the 0.x series into a production-ready package. Includes three connection modes (Lite/Self-Hosted/Managed API), WP-CLI commands, cart recommendations, search analytics, and enterprise-grade security. PHP 8.0+ now required. Recommended for all users - this is the foundation for future development. Safe upgrade with full backward compatibility.
+
+= 0.18.3 =
 * **New:** Cart recommendations shortcode, block, and Elementor widget for flexible placement
 * **New:** Admin tool to update product sold_count in Supabase for any selected timeframe
 * **New:** Explicit dependency-ordered class loading replaces autoloader for better reliability

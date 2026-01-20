@@ -533,7 +533,17 @@ class AIVectorSearch_Connection_Manager {
 
             case 'api':
                 $status = $this->api_client->get_status();
-                return $status['total_products'] ?? 0;
+                $usage_products = $status['usage']['products_synced']
+                    ?? ($status['usage']['productsSynced'] ?? 0);
+                $products_count = $status['products_count']
+                    ?? $status['total_products']
+                    ?? 0;
+                $fallback_products = $status['products_synced']
+                    ?? ($status['usage_tracking']['products_synced'] ?? 0)
+                    ?? ($status['usage_tracking']['productsSynced'] ?? 0)
+                    ?? ($status['usageTracking']['products_synced'] ?? 0)
+                    ?? ($status['usageTracking']['productsSynced'] ?? 0);
+                return max((int) $usage_products, (int) $products_count, (int) $fallback_products);
 
             case 'self_hosted':
                 return $this->supabase_client->get_synced_count();

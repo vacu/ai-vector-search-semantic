@@ -56,6 +56,7 @@ defined('ABSPATH') || exit;
                 </a>
             </div>
         </div>
+        <input type="hidden" id="aivesese_license_key" name="aivesese_license_key" value="<?php echo esc_attr($license_key); ?>">
 
     <?php else: ?>
         <!-- License Activation Form -->

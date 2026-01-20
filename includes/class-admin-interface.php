@@ -1,8 +1,10 @@
 <?php
+
 /**
  * Handles all admin interface functionality
  */
-class AIVectorSearch_Admin_Interface {
+class AIVectorSearch_Admin_Interface
+{
 
     private static $instance = null;
     private $supabase_client;
@@ -10,14 +12,16 @@ class AIVectorSearch_Admin_Interface {
     private $product_sync;
     private $lite_engine;
 
-    public static function instance() {
+    public static function instance()
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function __construct() {
+    private function __construct()
+    {
         $this->supabase_client = AIVectorSearch_Supabase_Client::instance();
         $this->api_client = AIVectorSearch_API_Client::instance();
         $this->product_sync = AIVectorSearch_Product_Sync::instance();
@@ -25,7 +29,8 @@ class AIVectorSearch_Admin_Interface {
         $this->init_hooks();
     }
 
-    private function init_hooks() {
+    private function init_hooks()
+    {
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_menu', [$this, 'add_admin_pages']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
@@ -44,7 +49,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Enhanced register_settings with PostgreSQL connection string
      */
-    public function register_settings() {
+    public function register_settings()
+    {
         $settings = [
             // Connection mode
             'connection_mode' => 'Connection Type',
@@ -82,7 +88,8 @@ class AIVectorSearch_Admin_Interface {
         $this->add_settings_fields();
     }
 
-    private function register_setting(string $id) {
+    private function register_setting(string $id)
+    {
         $sanitizers = [
             'connection_mode' => 'sanitize_text_field',
             'license_key' => 'aivesese_passthru',
@@ -120,14 +127,17 @@ class AIVectorSearch_Admin_Interface {
 
         // Special handling for checkboxes
         if (in_array($id, ['enable_search', 'semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration'])) {
-            $config['sanitize_callback'] = function($v) { return $v === '1' ? '1' : '0'; };
+            $config['sanitize_callback'] = function ($v) {
+                return $v === '1' ? '1' : '0';
+            };
             $config['default'] = $id === 'enable_woodmart_integration' ? '0' : '1';
         }
 
         register_setting('aivesese_settings', "aivesese_{$id}", $config);
     }
 
-    public function sanitize_lite_stopwords($value): string {
+    public function sanitize_lite_stopwords($value): string
+    {
         if (!is_string($value)) {
             return '';
         }
@@ -135,7 +145,8 @@ class AIVectorSearch_Admin_Interface {
         return sanitize_textarea_field(wp_unslash($value));
     }
 
-    public function sanitize_lite_synonyms($value): string {
+    public function sanitize_lite_synonyms($value): string
+    {
         if (!is_string($value)) {
             return '';
         }
@@ -143,7 +154,8 @@ class AIVectorSearch_Admin_Interface {
         return sanitize_textarea_field(wp_unslash($value));
     }
 
-    public function sanitize_search_results_limit($value): int {
+    public function sanitize_search_results_limit($value): int
+    {
         $limit = absint($value);
 
         if ($limit < 1) {
@@ -157,7 +169,8 @@ class AIVectorSearch_Admin_Interface {
         return $limit;
     }
 
-    private function add_settings_fields() {
+    private function add_settings_fields()
+    {
         // Connection mode selector
         add_settings_field(
             'aivesese_connection_mode',
@@ -235,28 +248,33 @@ class AIVectorSearch_Admin_Interface {
         }
     }
 
-    public function render_connection_mode_field() {
+    public function render_connection_mode_field()
+    {
         // Use templated selector instead of inline HTML
         $current_mode = get_option('aivesese_connection_mode', 'lite');
-        $api_available = false; // Flip when API service is live
+        $api_available = true;
         $this->load_template('connection-mode-selector-with-lite', compact('current_mode', 'api_available'));
         return;
     }
 
-    public function render_license_key_field() {
+    public function render_license_key_field()
+    {
         // Use templated license activation instead of inline HTML
         $license_key = get_option('aivesese_license_key');
         $is_activated = !empty($license_key) && get_option('aivesese_api_activated') === '1';
         $activation_data = [];
         if ($is_activated && method_exists($this->api_client, 'get_status')) {
             $status = $this->api_client->get_status();
-            if (is_array($status)) { $activation_data = $status; }
+            if (is_array($status)) {
+                $activation_data = $status;
+            }
         }
         $this->load_template('license-activation', compact('license_key', 'is_activated', 'activation_data'));
         return;
     }
 
-    public function render_text_field($args) {
+    public function render_text_field($args)
+    {
         $field_id = $args['field_id'];
         $value = get_option("aivesese_{$field_id}");
 
@@ -272,7 +290,8 @@ class AIVectorSearch_Admin_Interface {
         }
     }
 
-    public function render_search_limit_field() {
+    public function render_search_limit_field()
+    {
         $value = aivesese_get_search_results_limit();
 
         printf(
@@ -283,7 +302,8 @@ class AIVectorSearch_Admin_Interface {
         echo '<p class="description">Maximum number of products to return in search results (1-100). Default: 20</p>';
     }
 
-    public function render_checkbox_field($args) {
+    public function render_checkbox_field($args)
+    {
         $field_id = $args['field_id'];
         $label = $args['label'];
         $value = get_option("aivesese_{$field_id}");
@@ -299,7 +319,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Handle license activation AJAX
      */
-    public function handle_license_activation() {
+    public function handle_license_activation()
+    {
         check_ajax_referer('aivesese_license_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -337,7 +358,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Enhanced settings page with custom field rendering
      */
-    public function render_settings_page() {
+    public function render_settings_page()
+    {
         $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
         echo '<div class="wrap aivesese-admin aivesese-mode-' . esc_attr($connection_mode) . '">';
@@ -377,7 +399,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Updated enqueue_admin_assets method - Now properly organized
      */
-    public function enqueue_admin_assets($hook) {
+    public function enqueue_admin_assets($hook)
+    {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if (!in_array($page, ['aivesese', 'aivesese-status', 'aivesese-sync', 'aivesese-analytics'], true)) {
             return;
@@ -393,7 +416,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Enhanced status page with API/self-hosted detection
      */
-    public function render_status_page() {
+    public function render_status_page()
+    {
         echo '<div class="wrap aivesese-admin">';
         echo '<h1>' . esc_html__('AI Vector Search Status', 'ai-vector-search-semantic') . '</h1>';
 
@@ -413,7 +437,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</div>';
     }
 
-    private function render_api_status() {
+    private function render_api_status()
+    {
         $license_key = get_option('aivesese_license_key');
 
         if (empty($license_key)) {
@@ -421,48 +446,90 @@ class AIVectorSearch_Admin_Interface {
             return;
         }
 
-        // Get status from API
-        $status = $this->api_client->get_status();
-
-        if (!$status) {
-            echo '<div class="notice notice-error"><p>Unable to connect to API service. Please check your license key.</p></div>';
+        if (get_option('aivesese_api_activated') !== '1') {
+            echo '<div class="notice notice-warning"><p>License key saved but not activated. Please activate it in Settings to connect the API service.</p></div>';
+            echo '<p><a class="button button-primary" href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">Go to Settings</a></p>';
             return;
         }
 
-        echo '<div class="notice notice-success"><p>✅ Connected to ZZZ Solutions API Service</p></div>';
+        // Get status from API with a helpful error message
+        $connection = $this->api_client->test_connection();
+
+        if (empty($connection['success'])) {
+            $message = !empty($connection['message']) ? $connection['message'] : 'Unable to connect to API service. Please check your license key.';
+            echo '<div class="notice notice-error"><p>' . esc_html($message) . '</p></div>';
+            return;
+        }
+
+        $status = is_array($connection['data'] ?? null) ? $connection['data'] : [];
+        if (empty($status)) {
+            echo '<div class="notice notice-error"><p>API connection succeeded but returned no status data.</p></div>';
+            return;
+        }
+
+        echo '<div class="notice notice-success"><p>Connected to ZZZ Solutions API Service.</p></div>';
 
         // Show subscription info
+        $plan = $status['plan'] ?? ($status['subscription']['plan'] ?? 'unknown');
+        $subscription_status = $status['status'] ?? ($status['subscription']['status'] ?? 'unknown');
+        $usage = $status['usage']
+            ?? ($status['usage_tracking'] ?? ($status['usageTracking'] ?? []));
+        $usage_products = $usage['products_synced'] ?? 0;
+        $products_count = $status['products_synced']
+            ?? max(
+                (int) $usage_products,
+                (int) ($status['products_count'] ?? 0),
+                (int) ($status['total_products'] ?? 0)
+            );
+        $searches_this_month = $usage['searches_this_month'] ?? 0;
+        $api_calls_today = $usage['api_calls_today'] ?? 0;
+        $expires_at = $status['expires_at'] ?? ($status['subscription']['expires_at'] ?? '');
+        $limits = $status['limits'] ?? [];
+        $products_limit = $limits['products_limit'] ?? ($limits['products'] ?? -1);
+        $searches_limit = $limits['searches_limit'] ?? ($limits['searches'] ?? -1);
+
         echo '<h2>Subscription Status</h2>';
         echo '<table class="widefat striped">';
         echo '<tbody>';
-        echo '<tr><td><strong>Plan</strong></td><td>' . esc_html(ucfirst($status['plan'])) . '</td></tr>';
-        echo '<tr><td><strong>Status</strong></td><td><span class="status-' . esc_attr($status['status']) . '">' . esc_html(ucfirst($status['status'])) . '</span></td></tr>';
-        echo '<tr><td><strong>Products Synced</strong></td><td>' . number_format($status['products_count']) . '</td></tr>';
-        echo '<tr><td><strong>Searches This Month</strong></td><td>' . number_format($status['usage']['searches_this_month']) . '</td></tr>';
-        echo '<tr><td><strong>API Calls Today</strong></td><td>' . number_format($status['usage']['api_calls_today']) . '</td></tr>';
+        echo '<tr><td><strong>Plan</strong></td><td>' . esc_html(ucfirst($plan)) . '</td></tr>';
+        echo '<tr><td><strong>Status</strong></td><td><span class="status-' . esc_attr($subscription_status) . '">' . esc_html(ucfirst($subscription_status)) . '</span></td></tr>';
+        $store_id = get_option('aivesese_store', '');
+        $status_store_id = $status['store_id'] ?? '';
+        if (empty($store_id) && !empty($status_store_id)) {
+            $store_id = $status_store_id;
+            update_option('aivesese_store', $store_id);
+        }
 
-        if (!empty($status['expires_at'])) {
-            echo '<tr><td><strong>Next Payment</strong></td><td>' . esc_html(gmdate('M j, Y', strtotime($status['expires_at']))) . '</td></tr>';
+        if (!empty($store_id)) {
+            echo '<tr><td><strong>Store ID</strong></td><td><code>' . esc_html($store_id) . '</code></td></tr>';
+        }
+
+        echo '<tr><td><strong>Products Synced</strong></td><td>' . number_format($products_count) . '</td></tr>';
+        echo '<tr><td><strong>Searches This Month</strong></td><td>' . number_format($searches_this_month) . '</td></tr>';
+        echo '<tr><td><strong>API Calls Today</strong></td><td>' . number_format($api_calls_today) . '</td></tr>';
+
+        if (!empty($expires_at)) {
+            echo '<tr><td><strong>Next Payment</strong></td><td>' . esc_html(gmdate('M j, Y', strtotime($expires_at))) . '</td></tr>';
         }
 
         echo '</tbody></table>';
 
         // Show usage limits
-        if (!empty($status['limits'])) {
+        if (!empty($limits)) {
             echo '<h2>Usage Limits</h2>';
             echo '<div class="usage-bars">';
 
             $this->render_usage_bar(
                 'Products',
-                $status['products_count'],
-                $status['limits']['products_limit'],
+                $products_count,
+                $products_limit,
                 'products'
             );
 
             $this->render_usage_bar(
                 'Monthly Searches',
-                $status['usage']['searches_this_month'],
-                $status['limits']['searches_limit'],
+                $searches_this_month,
+                $searches_limit,
                 'searches'
             );
 
@@ -470,7 +537,8 @@ class AIVectorSearch_Admin_Interface {
         }
     }
 
-    private function render_usage_bar($label, $current, $limit, $type) {
+    private function render_usage_bar($label, $current, $limit, $type)
+    {
         $percentage = $limit > 0 ? min(($current / $limit) * 100, 100) : 0;
         $bar_class = $percentage > 90 ? 'usage-critical' : ($percentage > 70 ? 'usage-warning' : 'usage-good');
 
@@ -485,7 +553,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</div>';
     }
 
-    private function render_self_hosted_status() {
+    private function render_self_hosted_status()
+    {
         if (!$this->is_configured()) {
             $this->render_configuration_error();
             return;
@@ -503,7 +572,8 @@ class AIVectorSearch_Admin_Interface {
         $this->render_quick_actions();
     }
 
-    private function render_lite_status() {
+    private function render_lite_status()
+    {
         $stats = $this->lite_engine ? $this->lite_engine->get_index_stats() : ['indexed_products' => 0, 'total_terms' => 0, 'last_built' => 0];
         $limit_option = get_option('aivesese_lite_index_limit', '500');
         $limit_value = is_numeric($limit_option) ? (int) $limit_option : 0;
@@ -535,7 +605,8 @@ class AIVectorSearch_Admin_Interface {
     }
 
 
-    public function add_admin_pages() {
+    public function add_admin_pages()
+    {
         // Add top-level menu page
         add_menu_page(
             'AI Vector Search',                    // Page title
@@ -589,7 +660,8 @@ class AIVectorSearch_Admin_Interface {
     }
 
 
-    public function render_sync_page() {
+    public function render_sync_page()
+    {
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Sync Products to Supabase', 'ai-vector-search-semantic') . '</h1>';
 
@@ -613,18 +685,20 @@ class AIVectorSearch_Admin_Interface {
         echo '</div>';
     }
 
-    private function is_configured(): bool {
+    private function is_configured(): bool
+    {
         $mode = get_option('aivesese_connection_mode', 'lite');
         if ($mode === 'lite') {
             return true;
         }
 
         return get_option('aivesese_store') &&
-               get_option('aivesese_url') &&
-               get_option('aivesese_key');
+            get_option('aivesese_url') &&
+            get_option('aivesese_key');
     }
 
-    private function render_configuration_error() {
+    private function render_configuration_error()
+    {
         echo '<div class="notice notice-error"><p>';
         echo esc_html__('Configuration incomplete! Please configure your Supabase settings first.', 'ai-vector-search-semantic');
         echo ' <a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">';
@@ -632,13 +706,15 @@ class AIVectorSearch_Admin_Interface {
         echo '</p></div>';
     }
 
-    private function render_connection_error() {
+    private function render_connection_error()
+    {
         echo '<div class="notice notice-error"><p>';
         echo esc_html__('Unable to connect to Supabase or no data found. Check your configuration and ensure the SQL has been installed.', 'ai-vector-search-semantic');
         echo '</p></div>';
     }
 
-    private function render_health_overview(array $data) {
+    private function render_health_overview(array $data)
+    {
         echo '<div class="notice notice-success"><p>✅ Successfully connected to Supabase!</p></div>';
 
         echo '<h2>Store Health Overview</h2>';
@@ -659,7 +735,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</tbody></table>';
     }
 
-    private function render_health_row(string $label, int $count, bool $is_good) {
+    private function render_health_row(string $label, int $count, bool $is_good)
+    {
         echo '<tr>';
         echo '<td>' . esc_html($label) . '</td>';
         echo '<td class="numeric">' . number_format($count) . '</td>';
@@ -667,7 +744,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</tr>';
     }
 
-    private function render_embeddings_status_row(int $with_embeddings, int $published) {
+    private function render_embeddings_status_row(int $with_embeddings, int $published)
+    {
         echo '<tr>';
         echo '<td>With Embeddings</td>';
         echo '<td class="numeric">' . number_format($with_embeddings) . '</td>';
@@ -685,7 +763,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</td></tr>';
     }
 
-    private function render_configuration_summary() {
+    private function render_configuration_summary()
+    {
         echo '<h2>' . esc_html__('Configuration Summary', 'ai-vector-search-semantic') . '</h2>';
         echo '<table class="widefat striped">';
         echo '<tbody>';
@@ -715,7 +794,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</tbody></table>';
     }
 
-    private function get_woodmart_status(): string {
+    private function get_woodmart_status(): string
+    {
         $is_enabled = get_option('aivesese_enable_woodmart_integration', '0') === '1';
         $is_woodmart_active = defined('WOODMART_THEME_DIR') || wp_get_theme()->get('Name') === 'Woodmart';
 
@@ -730,7 +810,8 @@ class AIVectorSearch_Admin_Interface {
         return '❌ Disabled (Woodmart available)';
     }
 
-    private function render_quick_actions() {
+    private function render_quick_actions()
+    {
         echo '<h2>' . esc_html__('Quick Actions', 'ai-vector-search-semantic') . '</h2>';
         echo '<p>';
         echo '<a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '" class="button">' . esc_html__('Configure Settings', 'ai-vector-search-semantic') . '</a> ';
@@ -738,7 +819,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</p>';
     }
 
-    private function handle_sync_actions() {
+    private function handle_sync_actions()
+    {
         if (!isset($_POST['action']) || !check_admin_referer('aivesese_sync')) {
             return;
         }
@@ -758,20 +840,22 @@ class AIVectorSearch_Admin_Interface {
         }
     }
 
-    private function handle_sync_all() {
+    private function handle_sync_all()
+    {
         $result = $this->product_sync->sync_all_products();
 
         if ($result['success']) {
             echo '<div class="notice notice-success"><p>Successfully synced ' .
-                 esc_attr($result['synced']) . '/' . esc_attr($result['total']) .
-                 ' products to Supabase!</p></div>';
+                esc_attr($result['synced']) . '/' . esc_attr($result['total']) .
+                ' products to Supabase!</p></div>';
         } else {
             echo '<div class="notice notice-error"><p>Sync failed: ' .
-                 esc_html($result['message']) . '</p></div>';
+                esc_html($result['message']) . '</p></div>';
         }
     }
 
-    private function handle_sync_batch() {
+    private function handle_sync_batch()
+    {
         $batch_size = isset($_POST['batch_size']) ? absint(wp_unslash($_POST['batch_size'])) : 50;
         $offset = isset($_POST['offset']) ? absint(wp_unslash($_POST['offset'])) : 0;
 
@@ -779,17 +863,18 @@ class AIVectorSearch_Admin_Interface {
 
         if ($result['success']) {
             echo '<div class="notice notice-success"><p>Successfully synced batch: ' .
-                 esc_attr($result['synced']) . '/' . esc_attr($result['total']) .
-                 ' products (offset: ' . esc_attr($offset) . ')</p></div>';
+                esc_attr($result['synced']) . '/' . esc_attr($result['total']) .
+                ' products (offset: ' . esc_attr($offset) . ')</p></div>';
 
             $this->render_next_batch_form($batch_size, $offset + $batch_size);
         } else {
             echo '<div class="notice notice-error"><p>Batch sync failed: ' .
-                 esc_html($result['message']) . '</p></div>';
+                esc_html($result['message']) . '</p></div>';
         }
     }
 
-    private function handle_generate_embeddings() {
+    private function handle_generate_embeddings()
+    {
         $result = $this->product_sync->generate_missing_embeddings();
 
         if ($result['success']) {
@@ -797,15 +882,16 @@ class AIVectorSearch_Admin_Interface {
                 echo '<div class="notice notice-info"><p>No products without embeddings found in Supabase.</p></div>';
             } else {
                 echo '<div class="notice notice-success"><p>Generated embeddings for ' .
-                     esc_html($result['updated']) . ' products. Skipped ' .
-                     esc_html($result['skipped']) . '.</p></div>';
+                    esc_html($result['updated']) . ' products. Skipped ' .
+                    esc_html($result['skipped']) . '.</p></div>';
             }
         } else {
             echo '<div class="notice notice-error"><p>' . esc_html($result['message']) . '</p></div>';
         }
     }
 
-    private function render_next_batch_form(int $batch_size, int $next_offset) {
+    private function render_next_batch_form(int $batch_size, int $next_offset)
+    {
         echo '<div class="notice notice-info">';
         echo '<p>Continue with next batch:</p>';
         echo '<form method="post" style="display:inline;">';
@@ -818,7 +904,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</div>';
     }
 
-    private function render_sync_overview() {
+    private function render_sync_overview()
+    {
         $total_products = wp_count_posts('product')->publish;
         $synced_count = $this->supabase_client->get_synced_count();
 
@@ -843,7 +930,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</tbody></table>';
     }
 
-    private function render_sync_actions() {
+    private function render_sync_actions()
+    {
         echo '<h2>Sync Actions</h2>';
 
         // Full sync
@@ -888,7 +976,8 @@ class AIVectorSearch_Admin_Interface {
         echo '<div id="sync-status"></div>';
     }
 
-    private function render_help_section() {
+    private function render_help_section()
+    {
         $user_id = get_current_user_id();
         $is_open = get_user_meta($user_id, '_aivesese_help_open', true);
         $is_open = ($is_open === '' ? '1' : $is_open);
@@ -904,7 +993,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</details></div>';
     }
 
-    private function render_setup_instructions() {
+    private function render_setup_instructions()
+    {
         $template = AIVESESE_PLUGIN_PATH . 'assets/templates/setup-instructions.php';
 
         if (! file_exists($template)) {
@@ -913,7 +1003,8 @@ class AIVectorSearch_Admin_Interface {
 
         include $template;
     }
-    private function render_sql_section() {
+    private function render_sql_section()
+    {
         $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
         if ($connection_mode !== 'self_hosted') {
@@ -938,7 +1029,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</div>';
     }
 
-    private function get_sql_content(): string {
+    private function get_sql_content(): string
+    {
         $base = plugin_dir_path(__FILE__);
         $candidates = [
             $base . '../assets/sql/supabase.sql',
@@ -953,8 +1045,8 @@ class AIVectorSearch_Admin_Interface {
                 // Add version header if not present
                 if (strpos($content, '-- AI Vector Search SQL v2.0') === false) {
                     $version_header = "-- AI Vector Search SQL v2.0 - Updated with SKU search and enhanced FTS\n" .
-                                    "-- Run this entire script in Supabase SQL Editor\n" .
-                                    "-- New features: Partial SKU search, Better ranking, Woodmart integration\n\n";
+                        "-- Run this entire script in Supabase SQL Editor\n" .
+                        "-- New features: Partial SKU search, Better ranking, Woodmart integration\n\n";
                     $content = $version_header . $content;
                 }
 
@@ -965,7 +1057,8 @@ class AIVectorSearch_Admin_Interface {
         return '';
     }
 
-    private function enqueue_help_script() {
+    private function enqueue_help_script()
+    {
         wp_register_script('aivesese-help', false, [], AIVESESE_PLUGIN_VERSION, true);
         wp_enqueue_script('aivesese-help');
 
@@ -979,7 +1072,8 @@ class AIVectorSearch_Admin_Interface {
         wp_add_inline_script('aivesese-help', $help_script);
     }
 
-    private function enqueue_admin_styles() {
+    private function enqueue_admin_styles()
+    {
         $current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
 
         // Main admin interface styles (always load on plugin pages)
@@ -1017,7 +1111,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Add conditional inline styles (minimal, only when necessary)
      */
-    private function add_conditional_styles($current_page) {
+    private function add_conditional_styles($current_page)
+    {
         $connection_mode = get_option('aivesese_connection_mode', 'lite');
 
         // Add body class-based styles for connection mode
@@ -1032,7 +1127,8 @@ class AIVectorSearch_Admin_Interface {
         }
     }
 
-    private function enqueue_admin_scripts() {
+    private function enqueue_admin_scripts()
+    {
         $current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
 
         // Main admin interface script (always load on plugin pages)
@@ -1114,7 +1210,8 @@ class AIVectorSearch_Admin_Interface {
         }
     }
 
-    public function show_services_banner() {
+    public function show_services_banner()
+    {
         $screen = function_exists('get_current_screen') ? get_current_screen() : null;
         $allowed_screens = [
             'toplevel_page_aivesese',
@@ -1138,7 +1235,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</div>';
     }
 
-    public function handle_help_toggle() {
+    public function handle_help_toggle()
+    {
         check_ajax_referer('aivesese_help_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -1151,7 +1249,8 @@ class AIVectorSearch_Admin_Interface {
         wp_send_json_success(['open' => $open]);
     }
 
-    public function show_sql_update_notice() {
+    public function show_sql_update_notice()
+    {
         if (!current_user_can('manage_options') || get_option('aivesese_sql_v2_dismissed')) {
             return;
         }
@@ -1195,7 +1294,8 @@ class AIVectorSearch_Admin_Interface {
         echo '</div>';
     }
 
-    public function handle_sql_update_dismiss() {
+    public function handle_sql_update_dismiss()
+    {
         if (isset($_GET['aivesese_sql_v2_dismiss']) && check_admin_referer('aivesese_sql_v2_nonce')) {
             update_option('aivesese_sql_v2_dismissed', time());
             wp_safe_redirect(remove_query_arg(['aivesese_sql_v2_dismiss', '_wpnonce']));
@@ -1206,7 +1306,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Render PostgreSQL connection string field
      */
-    public function render_postgres_connection_field() {
+    public function render_postgres_connection_field()
+    {
         $connection_mode = get_option('aivesese_connection_mode', 'lite');
         $value = get_option('aivesese_postgres_connection_string');
         $has_value = !empty($value);
@@ -1224,7 +1325,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Render sold count update section (self-hosted only).
      */
-    private function render_sold_count_section() {
+    private function render_sold_count_section()
+    {
         $ranges = [
             '7' => 'Last 7 days',
             '30' => 'Last 30 days',
@@ -1238,14 +1340,16 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Render PostgreSQL help section (extracted from inline HTML)
      */
-    private function render_postgres_help_section() {
+    private function render_postgres_help_section()
+    {
         include AIVESESE_PLUGIN_PATH . 'assets/templates/postgres-help-section.php';
     }
 
     /**
      * Handle PostgreSQL schema installation via AJAX
      */
-    public function handle_postgres_install_schema() {
+    public function handle_postgres_install_schema()
+    {
         check_ajax_referer('aivesese_postgres_install_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -1275,7 +1379,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Handle PostgreSQL status check via AJAX
      */
-    public function handle_postgres_check_status() {
+    public function handle_postgres_check_status()
+    {
         check_ajax_referer('aivesese_postgres_status_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -1293,7 +1398,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Handle sold count update via AJAX.
      */
-    public function handle_update_sold_counts() {
+    public function handle_update_sold_counts()
+    {
         check_ajax_referer('aivesese_admin_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -1318,7 +1424,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Render installation options (PostgreSQL + Manual)
      */
-    private function render_installation_options(array $migration_status) {
+    private function render_installation_options(array $migration_status)
+    {
         echo '<h2>🗄️ Database Schema Installation</h2>';
 
         // Show current status if already installed
@@ -1358,21 +1465,24 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Render PostgreSQL installation option (available)
      */
-    private function render_postgres_installation_option() {
+    private function render_postgres_installation_option()
+    {
         include AIVESESE_PLUGIN_PATH . 'assets/templates/postgres-installation-option.php';
     }
 
     /**
      * Render PostgreSQL installation unavailable notice
      */
-    private function render_postgres_installation_unavailable(array $status) {
+    private function render_postgres_installation_unavailable(array $status)
+    {
         include AIVESESE_PLUGIN_PATH . 'assets/templates/postgres-installation-unavailable.php';
     }
 
     /**
      * Render manual installation option
      */
-    private function render_manual_installation_option() {
+    private function render_manual_installation_option()
+    {
         $sql_content = $this->get_sql_content();
         include AIVESESE_PLUGIN_PATH . 'assets/templates/manual-installation-option.php';
     }
@@ -1380,7 +1490,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Render manual installation steps
      */
-    private function render_manual_installation_steps() {
+    private function render_manual_installation_steps()
+    {
         $sql_content = $this->get_sql_content();
 
         // Use template file instead of inline HTML
@@ -1391,7 +1502,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Validate Supabase connection configuration
      */
-    private function validate_supabase_connection(): bool {
+    private function validate_supabase_connection(): bool
+    {
         $url = trim(get_option('aivesese_url', ''));
         $key = trim(get_option('aivesese_key', ''));
         $store_id = trim(get_option('aivesese_store', ''));
@@ -1402,7 +1514,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Render notice when Supabase connection is not configured
      */
-    private function render_connection_required_notice() {
+    private function render_connection_required_notice()
+    {
         echo '<div class="notice notice-warning inline">';
         echo '<h3>⚙️ Configuration Required</h3>';
         echo '<p>Please configure your Supabase connection settings above to use the schema installation features.</p>';
@@ -1419,7 +1532,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Add body classes for better CSS targeting
      */
-    public function add_admin_body_class($classes) {
+    public function add_admin_body_class($classes)
+    {
         $screen = get_current_screen();
         if ($screen && strpos($screen->id, 'aivesese') !== false) {
             $connection_mode = get_option('aivesese_connection_mode', 'lite');
@@ -1431,14 +1545,16 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Register the admin body class filter
      */
-    private function init_admin_body_classes() {
+    private function init_admin_body_classes()
+    {
         add_filter('admin_body_class', [$this, 'add_admin_body_class']);
     }
 
     /**
      * Load template file helper method (NEW)
      */
-    private function load_template($template_name, $vars = []) {
+    private function load_template($template_name, $vars = [])
+    {
         $template_name = basename((string) $template_name);
         $template_path = AIVESESE_PLUGIN_PATH . "assets/templates/{$template_name}.php";
 
@@ -1455,7 +1571,8 @@ class AIVectorSearch_Admin_Interface {
     /**
      * Enhanced template loading with error handling (NEW)
      */
-    private function load_template_with_fallback($template_name, $vars = [], $fallback_content = '') {
+    private function load_template_with_fallback($template_name, $vars = [], $fallback_content = '')
+    {
         $template_name = basename((string) $template_name);
         $template_path = AIVESESE_PLUGIN_PATH . "assets/templates/{$template_name}.php";
 
@@ -1471,4 +1588,3 @@ class AIVectorSearch_Admin_Interface {
         return $fallback_content;
     }
 }
-

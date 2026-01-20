@@ -238,6 +238,7 @@ class AIVectorSearch_Product_Sync {
             'gtin' => $this->get_product_gtin($product),
             'name' => $product->get_name(),
             'description' => wp_strip_all_tags($product->get_description()),
+            'short_description' => wp_strip_all_tags($product->get_short_description()),
             'image_url' => $this->get_product_image_url($product),
             'brand' => $this->get_product_brand($product),
             'categories' => $this->get_product_categories($product),
@@ -249,8 +250,11 @@ class AIVectorSearch_Product_Sync {
             'stock_status' => $product->get_stock_status() === 'instock' ? 'in' : 'out',
             'attributes' => $this->get_product_attributes($product),
             'status' => $product->get_status(),
+            'featured' => $product->is_featured(),
             'average_rating' => $product->get_average_rating() ? floatval($product->get_average_rating()) : null,
             'review_count' => $product->get_review_count() ? intval($product->get_review_count()) : 0,
+            'sold_count' => $product->get_total_sales() ? intval($product->get_total_sales()) : 0,
+            'permalink' => get_permalink($product->get_id()),
         ];
     }
 

@@ -258,8 +258,9 @@ class AIVectorSearch_Plugin {
 
         // API Option
         echo '<div class="api-option">';
-        echo '<h4>🚀 Managed API Service (Coming Soon)</h4>';
-        echo '<p><em>We\'re working on a hosted service that will eliminate setup complexity.</em></p>';
+        echo '<h4>🚀 Managed API Service</h4>';
+        echo '<p>Hosted search service with a license key. No setup required!</p>
+        <p><a href="https://zzzsolutions.ro/ai-search-service" target="_blank" rel="noopener noreferrer" class="button button-primary">Get a License</a></p>';
         echo '</div>';
 
         // Self-hosted Option
