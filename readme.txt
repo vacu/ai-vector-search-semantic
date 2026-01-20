@@ -13,46 +13,85 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 == Description ==
 
-Transform your WooCommerce search with AI-powered semantic technology. **AI Vector Search** delivers lightning-fast, highly relevant results that understand customer intent, not just keywords.
+**Stop losing customers to poor search results.** AI Vector Search transforms your WooCommerce store's search experience with intelligent, AI-powered technology that understands what your customers are really looking for - not just matching keywords.
 
-### 🎯 Key Features
+Whether you run a small boutique or manage thousands of products, this plugin delivers lightning-fast, highly relevant search results that increase conversions and improve customer satisfaction.
 
-**Three Flexible Modes:**
-* **Lite Mode (Default)** - Zero-config local TF-IDF search with synonyms and stopwords. No external services required.
-* **Self-Hosted Supabase** - Full-text + vector search on your own Supabase infrastructure. You control the data and configuration.
-* **Managed API Service** - Let us host the entire stack (Supabase + OpenAI). Just activate with your license key and we handle the infrastructure, updates, and scaling.
+### 🚀 Why AI Vector Search?
 
-**Smart Search:**
-* Full-text PostgreSQL search with instant results
-* AI semantic understanding via OpenAI embeddings (optional)
-* SKU, EAN, UPC, ISBN partial matching
-* Hybrid search combining multiple methods
+Traditional WooCommerce search fails when customers use different words, misspellings, or partial product codes. Our plugin solves this with three powerful search modes you can choose based on your needs:
 
-**AI Recommendations:**
-* Similar products on detail pages
-* Smart cart-based upsells
-* Shortcode, Gutenberg block, and Elementor widget support
+**Lite Mode (Default - Free Forever)**
+Works instantly after installation with zero configuration. Uses advanced TF-IDF algorithms with synonym expansion and stopword filtering. Perfect for stores under 1,000 products or budget-conscious merchants. No external services, APIs, or monthly costs required.
 
-**Analytics & Insights:**
-* Search volume, success rate, and CTR tracking
-* Zero-result alerts for merchandising opportunities
-* Popular search terms and click tracking
+**Self-Hosted Supabase Mode**
+Unlock enterprise-grade search on your own infrastructure. Get PostgreSQL full-text search combined with optional AI semantic understanding via OpenAI embeddings. Your data stays in your Supabase project - you maintain complete control. Includes partial SKU/EAN/UPC/ISBN matching, hybrid search strategies, and scales to millions of queries. Free tier supports 50,000 queries/month.
 
-**Professional Tools:**
-* WP-CLI commands for schema management and sync
-* Encrypted API key storage with master key support
-* Auto-sync on product updates
-* Woodmart theme integration
+**Managed API Service Mode**
+Let us handle everything. Simply activate with your license key and we manage the entire stack - Supabase hosting, OpenAI integration, infrastructure updates, scaling, and maintenance. You focus on your store, we handle the complex search infrastructure.
 
-### 🔒 Security & Pricing
+### ✨ Powerful Features That Drive Sales
 
-**Security:**
-All API keys encrypted in your WordPress database. Self-hosted mode gives you complete data control. HTTPS-only communications.
+**Intelligent Search Technology:**
+* **Semantic Understanding** - AI knows "running shoes" and "jogging sneakers" mean the same thing
+* **Fuzzy Matching** - Handles typos and misspellings gracefully
+* **SKU & Product Code Search** - Find products instantly by partial EAN, UPC, ISBN, or SKU
+* **Hybrid Search** - Combines full-text, semantic, and code-based search for best results
+* **Lightning Fast** - Search happens on optimized PostgreSQL infrastructure, not your WordPress server
 
-**Costs:**
-* **Lite Mode:** Free, runs locally with no external dependencies
-* **Self-Hosted Supabase:** Free tier includes 50,000 queries/month. Optional OpenAI costs ~$0.05-$1.00 per 1,000 products (one-time)
-* **Managed API Service:** Subscription-based pricing. We handle all infrastructure costs and maintenance.
+**AI-Powered Recommendations:**
+* **Similar Products** - Automatically suggest related items on product pages using AI similarity
+* **Smart Cart Upsells** - Show intelligent recommendations based on what's already in the cart
+* **Multiple Display Options** - Use shortcodes, Gutenberg blocks, or Elementor widgets anywhere on your site
+* **Category-Aware** - Recommendations understand product relationships and categories
+
+**Search Analytics Dashboard:**
+* Track search volume, success rates, and click-through rates
+* Identify popular search terms to optimize inventory
+* Get alerted when customers search for products you don't stock yet
+* Export analytics data for deeper analysis
+* Make data-driven merchandising decisions
+
+**Professional Setup & Management:**
+* **WP-CLI Commands** - Professional schema installation, testing, and product sync via command line
+* **Auto-Sync** - Products automatically sync when saved or updated
+* **Batch Processing** - Handle large catalogs efficiently with intelligent batching
+* **Health Monitoring** - Built-in status checks and diagnostics
+* **Encrypted Security** - API keys stored with enterprise-grade encryption and master key support
+
+**Seamless Integrations:**
+* **Woodmart Theme** - Native integration with Woodmart's live search
+* **Elementor** - Drag-and-drop cart recommendations widget
+* **Gutenberg** - Native blocks for easy content integration
+* **Developer Friendly** - Comprehensive hooks and filters for customization
+
+### 🎯 Perfect For
+
+* Stores frustrated with default WooCommerce search limitations
+* Large catalogs (1,000+ products) needing better discovery
+* Stores with complex product variations and attributes
+* Multi-language or international stores
+* Merchants wanting to increase average order value with smart recommendations
+* Developers seeking modern, scalable search infrastructure
+
+### 🔒 Security & Transparency
+
+**Your Data, Your Control:**
+All API keys are encrypted in your WordPress database. Self-hosted mode keeps your product data in your own Supabase project. The Managed API mode processes your data securely in isolated environments. All communications use HTTPS/TLS encryption.
+
+**Transparent Pricing:**
+* **Lite Mode:** Free forever, runs locally
+* **Self-Hosted Supabase:** Free tier includes 50,000 queries/month. Optional OpenAI embeddings cost ~$0.05-$1.00 per 1,000 products (one-time setup cost only)
+* **Managed API Service:** Subscription-based pricing includes all infrastructure costs
+
+**No Data Lock-In:**
+You always maintain access to your product data. Switch modes or export your data anytime.
+
+### 🏆 What Makes This Different?
+
+Unlike other search plugins that require expensive third-party subscriptions or complex setups, AI Vector Search gives you complete flexibility. Start free with Lite Mode, upgrade to self-hosted infrastructure when you grow, or let us manage everything with the API service. You choose the approach that fits your business model and budget.
+
+Built by developers for developers, with comprehensive documentation, WP-CLI support, and extensibility via WordPress hooks and filters.
 
 == 📦 Installation ==
 
