@@ -13,6 +13,14 @@ class AIVectorSearch_Product_Sync {
     private const API_SHORT_DESCRIPTION_MAX_LENGTH = 20000;
     private const API_SKU_MAX_LENGTH = 255;
 
+    private const SYNCABLE_FIELDS = [
+        'cost_price'     => 'Cost of Goods',
+        'regular_price'  => 'Regular Price',
+        'sale_price'     => 'Sale Price',
+        'stock_quantity' => 'Stock Quantity',
+        'stock_status'   => 'Stock Status',
+    ];
+
     public static function instance() {
         if (self::$instance === null) {
             self::$instance = new self();
@@ -59,6 +67,10 @@ class AIVectorSearch_Product_Sync {
         $this->sync_products([$product], $with_embeddings);
     }
 
+    public function get_syncable_fields(): array {
+        return self::SYNCABLE_FIELDS;
+    }
+
     public function sync_all_products(): array {
         $products = $this->get_all_products();
         $with_embeddings = $this->should_generate_embeddings();
@@ -94,6 +106,52 @@ class AIVectorSearch_Product_Sync {
 
         $with_embeddings = $this->should_generate_embeddings();
         return $this->sync_products($products, $with_embeddings);
+    }
+
+    public function sync_field_batch(int $batch_size, int $offset, string $field): array {
+        if (!array_key_exists($field, self::SYNCABLE_FIELDS)) {
+            return ['success' => false, 'message' => 'Invalid field: ' . $field];
+        }
+
+        $products = $this->get_products_batch($batch_size, $offset);
+
+        if (empty($products)) {
+            return [
+                'success' => false,
+                'message' => sprintf('No products found at offset %d', $offset),
+                'synced'  => 0,
+                'total'   => 0,
+            ];
+        }
+
+        $store_id = get_option('aivesese_store');
+        $payloads = [];
+        foreach ($products as $product) {
+            $payloads[] = [
+                'woocommerce_id' => $product->get_id(),
+                'store_id'       => $store_id,
+                $field           => $this->get_field_value($product, $field),
+            ];
+        }
+
+        $success = $this->connection_manager->update_products_field($payloads, $field);
+
+        return [
+            'success' => $success,
+            'synced'  => $success ? count($payloads) : 0,
+            'total'   => count($payloads),
+        ];
+    }
+
+    private function get_field_value(WC_Product $product, string $field) {
+        switch ($field) {
+            case 'cost_price':     return $this->get_product_cost_price($product);
+            case 'regular_price':  return $this->get_product_price($product, 'regular');
+            case 'sale_price':     return $this->get_product_price($product, 'sale');
+            case 'stock_quantity': return $product->get_stock_quantity();
+            case 'stock_status':   return $product->get_stock_status() === 'instock' ? 'in' : 'out';
+            default:               return null;
+        }
     }
 
     public function sync_products(array $products, bool $with_embeddings = false): array {
@@ -571,47 +629,57 @@ class AIVectorSearch_Product_Sync {
     }
 
     private function get_product_cost_price(WC_Product $product): ?float {
-        // Try COGS total value first (your current implementation)
-        $cogs_cost = get_post_meta($product->get_id(), '_cogs_total_value', true);
-        if ($cogs_cost && is_numeric($cogs_cost)) {
-            return floatval($cogs_cost);
+        $id = $product->get_id();
+
+        // 1. WooCommerce native COGS (WC 9.5+) — _cogs_total_value
+        $cost = get_post_meta($id, '_cogs_total_value', true);
+        if ($cost !== '' && is_numeric($cost)) {
+            return floatval($cost);
         }
 
-        // Fallback to generic cost price meta
-        $generic_cost = get_post_meta($product->get_id(), '_cost_price', true);
-        if ($generic_cost && is_numeric($generic_cost)) {
-            return floatval($generic_cost);
+        // 2. Cost of Goods: Product Cost & Profit Calculator for WooCommerce (Algoritmika)
+        //    Only checked when WC native COGS is not present.
+        $cost = get_post_meta($id, '_alg_wc_cog_cost', true);
+        if ($cost !== '' && is_numeric($cost) && floatval($cost) > 0) {
+            return floatval($cost);
         }
 
-        // Additional fallbacks for common COGS plugin meta keys
+        // 3. WooCommerce Cost of Goods (SkyVerge / WooCommerce.com)
+        $cost = get_post_meta($id, '_wc_cog_cost', true);
+        if ($cost !== '' && is_numeric($cost) && floatval($cost) > 0) {
+            return floatval($cost);
+        }
+
+        // 4. Generic fallbacks
         $fallback_keys = [
-            '_wc_cog_cost',           // WooCommerce Cost of Goods plugin
-            '_purchase_price',        // Some accounting plugins
-            '_product_cost',          // Generic cost field
-            '_wholesale_price',       // Sometimes used as cost basis
+            '_cost_price',
+            '_purchase_price',
+            '_product_cost',
         ];
 
         foreach ($fallback_keys as $meta_key) {
-            $cost = get_post_meta($product->get_id(), $meta_key, true);
-            if ($cost && is_numeric($cost) && floatval($cost) > 0) {
+            $cost = get_post_meta($id, $meta_key, true);
+            if ($cost !== '' && is_numeric($cost) && floatval($cost) > 0) {
                 return floatval($cost);
             }
         }
 
-        // For variable products, try to get cost from variations
+        // 5. For variable products, derive cost from variations (average)
         if ($product->is_type('variable')) {
-            $variation_ids = $product->get_children();
+            $variation_keys = ['_cogs_total_value', '_alg_wc_cog_cost', '_wc_cog_cost'];
             $costs = [];
 
-            foreach ($variation_ids as $variation_id) {
-                $variation_cost = get_post_meta($variation_id, '_cogs_total_value', true);
-                if ($variation_cost && is_numeric($variation_cost)) {
-                    $costs[] = floatval($variation_cost);
+            foreach ($product->get_children() as $variation_id) {
+                foreach ($variation_keys as $key) {
+                    $variation_cost = get_post_meta($variation_id, $key, true);
+                    if ($variation_cost !== '' && is_numeric($variation_cost) && floatval($variation_cost) > 0) {
+                        $costs[] = floatval($variation_cost);
+                        break; // use the first matching key for this variation
+                    }
                 }
             }
 
             if (!empty($costs)) {
-                // Return average cost of variations
                 return array_sum($costs) / count($costs);
             }
         }

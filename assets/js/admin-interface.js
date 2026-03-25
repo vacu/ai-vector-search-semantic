@@ -13,6 +13,7 @@ class AIVectorSearchAdmin {
         this.initLicenseActivation();
         this.initHelpToggle();
         this.initSyncAllBatches();
+        this.initFieldSync();
         this.initFormSpinners();
         this.initAnalyticsNotices();
         this.initSoldCountUpdate();
@@ -117,6 +118,107 @@ class AIVectorSearchAdmin {
             if (submitButton) {
                 submitButton.disabled = false;
                 submitButton.textContent = 'Sync All Products';
+            }
+        });
+    }
+
+    initFieldSync() {
+        const btn = document.querySelector('[data-aivesese-field-sync-btn="1"]');
+        const statusDiv = document.getElementById('sync-status');
+
+        if (!btn || !statusDiv) {
+            return;
+        }
+
+        btn.addEventListener('click', () => {
+            const form = btn.closest('form');
+            const field = form?.querySelector('select[name="field"]')?.value;
+            const batchSizeInput = form?.querySelector('input[name="batch_size"]');
+            const batchSize = Math.min(Math.max(parseInt(batchSizeInput?.value || '50', 10) || 50, 1), 200);
+
+            if (!field) {
+                return;
+            }
+
+            const fieldLabel = form.querySelector(`select[name="field"] option[value="${field}"]`)?.textContent || field;
+            if (!window.confirm(`This will update "${fieldLabel}" for all products. Continue?`)) {
+                return;
+            }
+
+            this.runFieldSyncBatches({ field, batchSize, offset: 0, submitButton: btn, statusDiv });
+        });
+    }
+
+    runFieldSyncBatches({ field, batchSize, offset, submitButton, statusDiv, syncedTotal = 0 }) {
+        const ajaxUrl = window.aivesese_admin?.ajax_url || window.ajaxurl;
+        const nonce = window.aivesese_admin?.nonce || '';
+
+        if (!ajaxUrl) {
+            this.renderSyncStatus(statusDiv, 'Missing AJAX endpoint.', 'error');
+            return;
+        }
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Syncing\u2026';
+        }
+
+        if (offset === 0) {
+            this.renderSyncProgress(statusDiv, { processed: 0, total: 0, synced: 0, done: false, starting: true });
+        }
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                action: 'aivesese_sync_field_batch',
+                field,
+                batch_size: batchSize,
+                offset,
+                nonce
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                const message = data.data?.message || 'Field sync failed.';
+                this.renderSyncStatus(statusDiv, message, 'error');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Sync Field for All Products';
+                }
+                return;
+            }
+
+            const payload = data.data || {};
+            const nextSyncedTotal = syncedTotal + (payload.synced || 0);
+            const processed = payload.processed || 0;
+            const total = payload.total_products || 0;
+
+            this.renderSyncProgress(statusDiv, { processed, total, synced: nextSyncedTotal, done: payload.done });
+
+            if (payload.done) {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Sync Field for All Products';
+                }
+                return;
+            }
+
+            this.runFieldSyncBatches({
+                field,
+                batchSize,
+                offset: payload.next_offset || (offset + batchSize),
+                submitButton,
+                statusDiv,
+                syncedTotal: nextSyncedTotal
+            });
+        })
+        .catch(() => {
+            this.renderSyncStatus(statusDiv, 'Field sync failed.', 'error');
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Sync Field for All Products';
             }
         });
     }

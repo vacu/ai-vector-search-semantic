@@ -45,6 +45,7 @@ class AIVectorSearch_Admin_Interface
         add_action('wp_ajax_aivesese_postgres_check_status', [$this, 'handle_postgres_check_status']);
         add_action('wp_ajax_aivesese_update_sold_counts', [$this, 'handle_update_sold_counts']);
         add_action('wp_ajax_aivesese_sync_products_batch', [$this, 'handle_sync_products_batch_ajax']);
+        add_action('wp_ajax_aivesese_sync_field_batch', [$this, 'handle_sync_field_batch_ajax']);
 
         $this->init_admin_body_classes();
     }
@@ -990,6 +991,24 @@ class AIVectorSearch_Admin_Interface
             echo '</div>';
         }
 
+        // Field sync
+        echo '<div class="sync-action-card">';
+        echo '<h3>🎯 Field Sync</h3>';
+        echo '<p>Update a single field across all synced products without re-syncing the full catalog. Useful for refreshing Cost of Goods, prices, or stock after a bulk change.</p>';
+        echo '<form method="post" class="sync-form" data-aivesese-field-sync-form="1">';
+        wp_nonce_field('aivesese_sync');
+        echo '<div class="sync-form-controls">';
+        echo '<label>Field: <select name="field">';
+        foreach ($this->product_sync->get_syncable_fields() as $key => $label) {
+            echo '<option value="' . esc_attr($key) . '">' . esc_html($label) . '</option>';
+        }
+        echo '</select></label> ';
+        echo '<label>Batch Size: <input type="number" name="batch_size" value="50" min="1" max="200" class="small-text"></label> ';
+        echo '<button type="button" class="button button-secondary" data-aivesese-field-sync-btn="1">Sync Field for All Products</button>';
+        echo '</div>';
+        echo '</form>';
+        echo '</div>';
+
         echo '<div id="sync-status"></div>';
     }
 
@@ -1045,6 +1064,58 @@ class AIVectorSearch_Admin_Interface
             'total_products' => $total_products,
             'next_offset' => $offset + $batch_size,
             'done' => $processed >= $total_products,
+        ]);
+    }
+
+    public function handle_sync_field_batch_ajax()
+    {
+        check_ajax_referer('aivesese_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized access'], 403);
+            return;
+        }
+
+        $field = isset($_POST['field']) ? sanitize_key(wp_unslash($_POST['field'])) : '';
+        $batch_size = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 50;
+        $offset = isset($_POST['offset']) ? absint($_POST['offset']) : 0;
+        $batch_size = min(max($batch_size, 1), 200);
+        $total_products = $this->product_sync->get_syncable_products_count();
+
+        if ($offset >= $total_products) {
+            wp_send_json_success([
+                'message'        => 'Field sync complete.',
+                'synced'         => 0,
+                'processed'      => $total_products,
+                'total_products' => $total_products,
+                'next_offset'    => $offset,
+                'done'           => true,
+            ]);
+            return;
+        }
+
+        $result = $this->product_sync->sync_field_batch($batch_size, $offset, $field);
+
+        if (empty($result['success'])) {
+            wp_send_json_error([
+                'message'        => $result['message'] ?? 'Field sync failed.',
+                'synced'         => (int) ($result['synced'] ?? 0),
+                'processed'      => min($offset, $total_products),
+                'total_products' => $total_products,
+                'next_offset'    => $offset,
+            ]);
+            return;
+        }
+
+        $processed = min($offset + (int) $result['total'], $total_products);
+
+        wp_send_json_success([
+            'message'        => sprintf('Updated %d of %d products in this batch.', (int) $result['synced'], (int) $result['total']),
+            'synced'         => (int) $result['synced'],
+            'processed'      => $processed,
+            'total_products' => $total_products,
+            'next_offset'    => $offset + $batch_size,
+            'done'           => $processed >= $total_products,
         ]);
     }
 

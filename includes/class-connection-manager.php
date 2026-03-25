@@ -247,6 +247,29 @@ class AIVectorSearch_Connection_Manager {
     }
 
     /**
+     * Update a single field for a batch of already-synced products.
+     */
+    public function update_products_field(array $data, string $field): bool {
+        $mode = $this->get_mode();
+
+        switch ($mode) {
+            case 'lite':
+                $this->lite_engine->force_rebuild_index();
+                return true;
+
+            case 'api':
+                $result = $this->api_client->update_products_field($data, $field);
+                return $result['success'] ?? false;
+
+            case 'self_hosted':
+                return $this->supabase_client->update_products_field($data, $field);
+
+            default:
+                return false;
+        }
+    }
+
+    /**
      * Generate embeddings for products without them
      */
     public function generate_missing_embeddings(): array {

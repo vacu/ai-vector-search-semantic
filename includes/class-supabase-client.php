@@ -132,6 +132,44 @@ class AIVectorSearch_Supabase_Client {
         return true;
     }
 
+    public function update_products_field(array $data, string $field): bool {
+        $store_id = get_option('aivesese_store');
+        if (!$store_id) {
+            return false;
+        }
+
+        $allowed = array_keys([
+            'cost_price'     => 1,
+            'regular_price'  => 1,
+            'sale_price'     => 1,
+            'stock_quantity' => 1,
+            'stock_status'   => 1,
+        ]);
+
+        if (!in_array($field, $allowed, true)) {
+            return false;
+        }
+
+        foreach ($data as $item) {
+            $result = $this->request(
+                'PATCH',
+                '/rest/v1/products',
+                [$field => $item[$field]],
+                [
+                    'woocommerce_id' => 'eq.' . (int) $item['woocommerce_id'],
+                    'store_id'       => 'eq.' . $store_id,
+                ]
+            );
+
+            if (is_wp_error($result)) {
+                $this->log_error('Field update failed', $result->get_error_message());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function get_products_without_embeddings(int $limit = 25): array {
         $store_id = get_option('aivesese_store');
         if (!$store_id) {

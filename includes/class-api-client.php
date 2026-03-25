@@ -191,6 +191,24 @@ class AIVectorSearch_API_Client
     }
 
     /**
+     * Update a single field for a batch of already-synced products
+     */
+    public function update_products_field(array $data, string $field): array
+    {
+        $response = $this->request('POST', '/products/batch/field', [
+            'field'    => $field,
+            'products' => $data,
+        ]);
+
+        if (is_wp_error($response)) {
+            return ['success' => false, 'message' => $response->get_error_message()];
+        }
+
+        $result = json_decode(wp_remote_retrieve_body($response), true);
+        return $result ?? ['success' => false, 'message' => 'Unknown error'];
+    }
+
+    /**
      * Generate embeddings for products
      */
     public function generate_embeddings(int $batch_size = 25, int $max_batches = 10): array
