@@ -8,6 +8,10 @@ class AIVectorSearch_Product_Sync {
     private $connection_manager;
     private $openai_client; // Keep for self-hosted embedding text building
     private $syncing_products = [];
+    private const API_NAME_MAX_LENGTH = 500;
+    private const API_DESCRIPTION_MAX_LENGTH = 20000;
+    private const API_SHORT_DESCRIPTION_MAX_LENGTH = 20000;
+    private const API_SKU_MAX_LENGTH = 255;
 
     public static function instance() {
         if (self::$instance === null) {
@@ -60,6 +64,19 @@ class AIVectorSearch_Product_Sync {
         $with_embeddings = $this->should_generate_embeddings();
 
         return $this->sync_products($products, $with_embeddings);
+    }
+
+    public function get_syncable_products_count(): int {
+        $query = new WP_Query(array_merge(
+            $this->get_product_query_args(),
+            [
+                'posts_per_page' => 1,
+                'fields' => 'ids',
+                'no_found_rows' => false,
+            ]
+        ));
+
+        return (int) $query->found_posts;
     }
 
     public function sync_products_batch(int $batch_size, int $offset): array {
@@ -229,16 +246,17 @@ class AIVectorSearch_Product_Sync {
 
     private function transform_product(WC_Product $product): array {
         $store_id = get_option('aivesese_store');
+        $product_id = $product->get_id();
 
         return [
             'id' => wp_generate_uuid4(),
             'store_id' => $store_id,
-            'woocommerce_id' => $product->get_id(),
-            'sku' => $product->get_sku(),
+            'woocommerce_id' => $product_id,
+            'sku' => $this->limit_product_text((string) $product->get_sku(), self::API_SKU_MAX_LENGTH, 'sku', $product_id),
             'gtin' => $this->get_product_gtin($product),
-            'name' => $product->get_name(),
-            'description' => wp_strip_all_tags($product->get_description()),
-            'short_description' => wp_strip_all_tags($product->get_short_description()),
+            'name' => $this->limit_product_text((string) $product->get_name(), self::API_NAME_MAX_LENGTH, 'name', $product_id),
+            'description' => $this->limit_product_text(wp_strip_all_tags($product->get_description()), self::API_DESCRIPTION_MAX_LENGTH, 'description', $product_id),
+            'short_description' => $this->limit_product_text(wp_strip_all_tags($product->get_short_description()), self::API_SHORT_DESCRIPTION_MAX_LENGTH, 'short_description', $product_id),
             'image_url' => $this->get_product_image_url($product),
             'brand' => $this->get_product_brand($product),
             'categories' => $this->get_product_categories($product),
@@ -258,30 +276,51 @@ class AIVectorSearch_Product_Sync {
         ];
     }
 
+    private function limit_product_text(string $value, int $max_length, string $field, int $product_id): string {
+        if ($value === '') {
+            return $value;
+        }
+
+        $length = mb_strlen($value);
+        if ($length <= $max_length) {
+            return $value;
+        }
+
+        error_log(sprintf(
+            'AI Vector Search: truncated %s for product %d from %d to %d characters before API sync.',
+            $field,
+            $product_id,
+            $length,
+            $max_length
+        ));
+
+        return mb_substr($value, 0, $max_length);
+    }
+
     private function get_all_products(): array {
-        $args = [
-            'post_type' => 'product',
-            'post_status' => 'publish',
-            'posts_per_page' => -1,
-            'tax_query' => [
-                [
-                    'taxonomy' => 'product_visibility',
-                    'field' => 'name',
-                    'terms' => ['exclude-from-search', 'exclude-from-catalog'],
-                    'operator' => 'NOT IN',
-                ],
-            ]
-        ];
+        $args = array_merge(
+            $this->get_product_query_args(),
+            ['posts_per_page' => -1]
+        );
 
         return $this->get_products_from_query($args);
     }
 
     private function get_products_batch(int $batch_size, int $offset): array {
-        $args = [
-            'post_type' => 'product',
-            'post_status' => 'publish',
+        $args = array_merge($this->get_product_query_args(), [
             'posts_per_page' => $batch_size,
             'offset' => $offset,
+        ]);
+
+        return $this->get_products_from_query($args);
+    }
+
+    private function get_product_query_args(): array {
+        return [
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'orderby' => 'ID',
+            'order' => 'ASC',
             'tax_query' => [
                 [
                     'taxonomy' => 'product_visibility',
@@ -291,8 +330,6 @@ class AIVectorSearch_Product_Sync {
                 ],
             ],
         ];
-
-        return $this->get_products_from_query($args);
     }
 
     private function get_products_from_query(array $args): array {

@@ -746,6 +746,40 @@ body:not(.aivesese-mode-lite) .lite-mode-section {
     margin: 0 5px;
 }
 
+.aivesese-sync-progress {
+    margin: 12px 0 4px;
+}
+
+.aivesese-progress-bar-wrap {
+    background: #e0e0e0;
+    border-radius: 4px;
+    height: 16px;
+    overflow: hidden;
+}
+
+.aivesese-progress-bar {
+    height: 100%;
+    width: 0;
+    background: #2271b1;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.aivesese-progress-bar.is-done {
+    background: #00a32a;
+}
+
+.aivesese-progress-label {
+    margin: 6px 0 0;
+    color: #646970;
+    font-size: 13px;
+}
+
+.aivesese-progress-label.is-done {
+    color: #00a32a;
+    font-weight: 600;
+}
+
 /* ==========================================================================
    Configuration Summary
    ========================================================================== */

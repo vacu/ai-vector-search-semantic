@@ -9,6 +9,7 @@ class AIVectorSearch_Admin_Interface
     private static $instance = null;
     private $supabase_client;
     private $api_client;
+    private $connection_manager;
     private $product_sync;
     private $lite_engine;
 
@@ -24,6 +25,7 @@ class AIVectorSearch_Admin_Interface
     {
         $this->supabase_client = AIVectorSearch_Supabase_Client::instance();
         $this->api_client = AIVectorSearch_API_Client::instance();
+        $this->connection_manager = AIVectorSearch_Connection_Manager::instance();
         $this->product_sync = AIVectorSearch_Product_Sync::instance();
         $this->lite_engine = AIVectorSearch_Lite_Engine::instance();
         $this->init_hooks();
@@ -42,6 +44,7 @@ class AIVectorSearch_Admin_Interface
         add_action('wp_ajax_aivesese_postgres_install_schema', [$this, 'handle_postgres_install_schema']);
         add_action('wp_ajax_aivesese_postgres_check_status', [$this, 'handle_postgres_check_status']);
         add_action('wp_ajax_aivesese_update_sold_counts', [$this, 'handle_update_sold_counts']);
+        add_action('wp_ajax_aivesese_sync_products_batch', [$this, 'handle_sync_products_batch_ajax']);
 
         $this->init_admin_body_classes();
     }
@@ -663,9 +666,13 @@ class AIVectorSearch_Admin_Interface
     public function render_sync_page()
     {
         echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('Sync Products to Supabase', 'ai-vector-search-semantic') . '</h1>';
-
         $connection_mode = get_option('aivesese_connection_mode', 'lite');
+        $heading = $connection_mode === 'api'
+            ? __('Sync Products to Managed API', 'ai-vector-search-semantic')
+            : __('Sync Products to Supabase', 'ai-vector-search-semantic');
+
+        echo '<h1>' . esc_html($heading) . '</h1>';
+
         if ($connection_mode === 'lite') {
             echo '<div class="notice notice-info"><p>' . esc_html__('Lite mode manages its search index automatically. No Supabase sync is required.', 'ai-vector-search-semantic') . '</p></div>';
             echo '<p><a class="button button-primary" href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">' . esc_html__('Manage Lite settings', 'ai-vector-search-semantic') . '</a></p>';
@@ -692,6 +699,12 @@ class AIVectorSearch_Admin_Interface
             return true;
         }
 
+        if ($mode === 'api') {
+            return !empty(get_option('aivesese_license_key')) &&
+                get_option('aivesese_api_activated') === '1' &&
+                !empty(get_option('aivesese_store'));
+        }
+
         return get_option('aivesese_store') &&
             get_option('aivesese_url') &&
             get_option('aivesese_key');
@@ -699,8 +712,13 @@ class AIVectorSearch_Admin_Interface
 
     private function render_configuration_error()
     {
+        $mode = get_option('aivesese_connection_mode', 'lite');
+        $message = $mode === 'api'
+            ? __('Configuration incomplete! Please activate your license in Settings first.', 'ai-vector-search-semantic')
+            : __('Configuration incomplete! Please configure your Supabase settings first.', 'ai-vector-search-semantic');
+
         echo '<div class="notice notice-error"><p>';
-        echo esc_html__('Configuration incomplete! Please configure your Supabase settings first.', 'ai-vector-search-semantic');
+        echo esc_html($message);
         echo ' <a href="' . esc_url(admin_url('admin.php?page=aivesese')) . '">';
         echo esc_html__('Go to Settings', 'ai-vector-search-semantic') . '</a>';
         echo '</p></div>';
@@ -842,16 +860,9 @@ class AIVectorSearch_Admin_Interface
 
     private function handle_sync_all()
     {
-        $result = $this->product_sync->sync_all_products();
-
-        if ($result['success']) {
-            echo '<div class="notice notice-success"><p>Successfully synced ' .
-                esc_attr($result['synced']) . '/' . esc_attr($result['total']) .
-                ' products to Supabase!</p></div>';
-        } else {
-            echo '<div class="notice notice-error"><p>Sync failed: ' .
-                esc_html($result['message']) . '</p></div>';
-        }
+        echo '<div class="notice notice-info"><p>' .
+            esc_html__('Batch sync starts in your browser and runs one request per chunk to avoid timeouts.', 'ai-vector-search-semantic') .
+            '</p></div>';
     }
 
     private function handle_sync_batch()
@@ -906,14 +917,17 @@ class AIVectorSearch_Admin_Interface
 
     private function render_sync_overview()
     {
-        $total_products = wp_count_posts('product')->publish;
-        $synced_count = $this->supabase_client->get_synced_count();
+        $total_products = $this->product_sync->get_syncable_products_count();
+        $synced_count = $this->connection_manager->get_synced_count();
+        $destination_label = get_option('aivesese_connection_mode', 'lite') === 'api'
+            ? __('Synced to Managed API', 'ai-vector-search-semantic')
+            : __('Synced to Supabase', 'ai-vector-search-semantic');
 
         echo '<h2>Sync Overview</h2>';
         echo '<table class="widefat striped aivs-data-table">';
         echo '<tbody>';
         echo '<tr><td><strong>WooCommerce Products</strong></td><td class="numeric">' . number_format($total_products) . '</td></tr>';
-        echo '<tr><td><strong>Synced to Supabase</strong></td><td class="numeric">' . number_format($synced_count) . '</td></tr>';
+        echo '<tr><td><strong>' . esc_html($destination_label) . '</strong></td><td class="numeric">' . number_format($synced_count) . '</td></tr>';
         echo '<tr><td><strong>Sync Status</strong></td><td>';
 
         if ($synced_count == 0) {
@@ -937,11 +951,14 @@ class AIVectorSearch_Admin_Interface
         // Full sync
         echo '<div class="sync-action-card">';
         echo '<h3>🔄 Full Sync</h3>';
-        echo '<p>Sync all WooCommerce products to Supabase. This may take a while for large catalogs.</p>';
-        echo '<form method="post" class="sync-form">';
+        echo '<p>Sync the full catalog in browser-driven batches so large catalogs do not hit a page timeout.</p>';
+        echo '<form method="post" class="sync-form" data-aivesese-sync-all-form="1">';
         wp_nonce_field('aivesese_sync');
         echo '<input type="hidden" name="action" value="sync_all">';
-        echo '<button type="submit" class="button button-primary" onclick="return confirm(\'This will sync all products. Continue?\')">Sync All Products</button>';
+        echo '<div class="sync-form-controls">';
+        echo '<label>Batch Size: <input type="number" name="batch_size" value="50" min="1" max="200" class="small-text"></label> ';
+        echo '<button type="button" class="button button-primary" data-aivesese-sync-all-btn="1">Sync All Products</button>';
+        echo '</div>';
         echo '</form>';
         echo '</div>';
 
@@ -974,6 +991,61 @@ class AIVectorSearch_Admin_Interface
         }
 
         echo '<div id="sync-status"></div>';
+    }
+
+    public function handle_sync_products_batch_ajax()
+    {
+        check_ajax_referer('aivesese_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized access'], 403);
+            return;
+        }
+
+        $batch_size = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 50;
+        $offset = isset($_POST['offset']) ? absint($_POST['offset']) : 0;
+        $batch_size = min(max($batch_size, 1), 200);
+        $total_products = $this->product_sync->get_syncable_products_count();
+
+        if ($offset >= $total_products) {
+            wp_send_json_success([
+                'message' => 'Sync already complete.',
+                'synced' => 0,
+                'processed' => $total_products,
+                'total_products' => $total_products,
+                'next_offset' => $offset,
+                'done' => true,
+            ]);
+            return;
+        }
+
+        $result = $this->product_sync->sync_products_batch($batch_size, $offset);
+
+        if (empty($result['success'])) {
+            wp_send_json_error([
+                'message' => $result['message'] ?? 'Batch sync failed.',
+                'synced' => (int) ($result['synced'] ?? 0),
+                'processed' => min($offset, $total_products),
+                'total_products' => $total_products,
+                'next_offset' => $offset,
+            ]);
+            return;
+        }
+
+        $processed = min($offset + (int) $result['total'], $total_products);
+
+        wp_send_json_success([
+            'message' => sprintf(
+                'Synced %d of %d products in this batch.',
+                (int) $result['synced'],
+                (int) $result['total']
+            ),
+            'synced' => (int) $result['synced'],
+            'processed' => $processed,
+            'total_products' => $total_products,
+            'next_offset' => $offset + $batch_size,
+            'done' => $processed >= $total_products,
+        ]);
     }
 
     private function render_help_section()

@@ -2,10 +2,10 @@
 Contributors: calingrim
 Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
-Tested up to: 6.9
-Woocommerce tested up to: 10.4.2
+Tested up to: 6.9.1
+Woocommerce tested up to: 10.5.3
 Requires PHP: 8.0
-Stable Tag: 1.0.0
+Stable Tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -106,7 +106,7 @@ Built by developers for developers, with comprehensive documentation, WP-CLI sup
 4. **(Optional) Enable Semantic Search with OpenAI:**
    - Add your OpenAI API key to generate embeddings (self-hosted or API modes).
    - Choose the search mode that fits your catalog and budget.
-5. **(Optional) Run a product sync** from **AI Vector Search -> Sync Products** or with `wp aivs sync-products` when Supabase is connected.
+5. **(Optional) Run a product sync** from **AI Vector Search -> Sync Products** or with `wp aivs sync-products` when using Self-Hosted Supabase or Managed API mode.
 
 ### Command Line Tools (WP-CLI)
 
@@ -115,6 +115,8 @@ Speed up setup and maintenance with new WP-CLI commands (requires the PostgreSQL
 * `wp aivs check-schema` - verify tables, functions, and extensions are present.
 * `wp aivs test-connection` - confirm credentials before running migrations.
 * `wp aivs sync-products` - batch sync products after catalog changes.
+
+The Sync Products screen now supports browser-driven full catalog sync in configurable batches, with live progress feedback to avoid admin page timeouts on larger stores.
 
 You can also trigger schema installation from the admin UI; both paths use the encrypted PostgreSQL connection string you store under **Settings  AI Supabase**.
 
@@ -137,7 +139,7 @@ You can also trigger schema installation from the admin UI; both paths use the e
 3. Search Analytics dashboard with success rate, CTR, and popular search terms.
 4. Main plugin settings page with Supabase and OpenAI configuration, plus WP-CLI schema installation.
 5. Status page showing store health overview and configuration summary.
-6. Sync Products page with full sync, batch sync, and embeddings generation options.
+6. Sync Products page with browser-driven batch progress, full sync controls, and embeddings generation options.
 7. Setup guide for manual and WP-CLI installation, including PostgreSQL connection and OpenAI configuration.
 
 == ❓ Frequently Asked Questions ==
@@ -153,7 +155,7 @@ Lite mode runs locally and is enabled by default. Switch to self-hosted Supabase
 
 = Can I switch connection modes later? =
 
-Yes! You can switch between Lite, Self-Hosted, and Managed API modes at any time from Settings. Your search analytics are preserved, but you'll need to re-sync products when switching to Supabase or API modes.
+Yes! You can switch between Lite, Self-Hosted, and Managed API modes at any time from Settings. Your search analytics are preserved, but you'll need to re-sync products when switching to Self-Hosted Supabase or Managed API mode.
 
 = Is OpenAI required? =
 
@@ -245,7 +247,14 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == 📝 Changelog ==
 
-= 1.0.0 (Latest) =
+= 1.0.1 (Latest) =
+* **New:** Browser-driven full catalog sync now runs in AJAX batches with live progress feedback to avoid admin timeouts on large stores
+* **New:** Sync Products page now supports Managed API mode with mode-aware headings, validation, and synced-count reporting
+* **Update:** Sync overview now counts only searchable WooCommerce products and uses a shared connection manager for destination status
+* **Update:** Product sync truncates oversized name, description, short description, and SKU fields before API sync to prevent payload errors
+* **Compatibility:** Tested up to WordPress 6.9.1 and WooCommerce 10.5.3
+
+= 1.0.0 =
 * **Milestone:** Official stable release with production-ready feature set
 * **New:** Three flexible connection modes - Lite (local), Self-Hosted (Supabase), and Managed API Service
 * **New:** Complete WP-CLI command suite for professional database management and setup
@@ -397,7 +406,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == ⬆️ Upgrade Notice ==
 
-= 1.0.0 (Latest) =
+= 1.0.1 (Latest) =
+Browser-driven catalog sync now runs in safe AJAX batches with progress feedback, the Sync Products screen supports Managed API mode more cleanly, and oversized product text fields are trimmed before API sync to prevent payload failures. Also tested up to WordPress 6.9.1 and WooCommerce 10.5.3.
+
+= 1.0.0 =
 🎉 **Major Milestone: Production-Ready v1.0.0!** This stable release brings together all features from the 0.x series into a production-ready package. Includes three connection modes (Lite/Self-Hosted/Managed API), WP-CLI commands, cart recommendations, search analytics, and enterprise-grade security. PHP 8.0+ now required. Recommended for all users - this is the foundation for future development. Safe upgrade with full backward compatibility.
 
 = 0.18.3 =

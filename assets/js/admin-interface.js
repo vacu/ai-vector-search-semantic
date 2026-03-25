@@ -12,9 +12,150 @@ class AIVectorSearchAdmin {
         this.initConnectionModeToggle();
         this.initLicenseActivation();
         this.initHelpToggle();
+        this.initSyncAllBatches();
         this.initFormSpinners();
         this.initAnalyticsNotices();
         this.initSoldCountUpdate();
+    }
+
+    initSyncAllBatches() {
+        const btn = document.querySelector('[data-aivesese-sync-all-btn="1"]');
+        const statusDiv = document.getElementById('sync-status');
+
+        if (!btn || !statusDiv) {
+            return;
+        }
+
+        btn.addEventListener('click', () => {
+            if (!window.confirm('This will sync all products in batches. Continue?')) {
+                return;
+            }
+
+            const form = btn.closest('form');
+            const batchSizeInput = form?.querySelector('input[name="batch_size"]');
+            const batchSize = Math.min(Math.max(parseInt(batchSizeInput?.value || '50', 10) || 50, 1), 200);
+
+            this.runSyncAllBatches({
+                batchSize,
+                offset: 0,
+                submitButton: btn,
+                statusDiv
+            });
+        });
+    }
+
+    runSyncAllBatches({batchSize, offset, submitButton, statusDiv, syncedTotal = 0}) {
+        const ajaxUrl = window.aivesese_admin?.ajax_url || window.ajaxurl;
+        const nonce = window.aivesese_admin?.nonce || '';
+
+        if (!ajaxUrl) {
+            this.renderSyncStatus(statusDiv, 'Missing AJAX endpoint.', 'error');
+            return;
+        }
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Syncing...';
+        }
+
+        if (offset === 0) {
+            this.renderSyncProgress(statusDiv, {processed: 0, total: 0, synced: 0, done: false, starting: true});
+        }
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'aivesese_sync_products_batch',
+                batch_size: batchSize,
+                offset: offset,
+                nonce: nonce
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                const message = data.data?.message || 'Batch sync failed.';
+                this.renderSyncStatus(statusDiv, message, 'error');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Sync All Products';
+                }
+                return;
+            }
+
+            const payload = data.data || {};
+            const nextSyncedTotal = syncedTotal + (payload.synced || 0);
+            const processed = payload.processed || 0;
+            const total = payload.total_products || 0;
+
+            this.renderSyncProgress(statusDiv, {
+                processed,
+                total,
+                synced: nextSyncedTotal,
+                done: payload.done
+            });
+
+            if (payload.done) {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Sync All Products';
+                }
+                return;
+            }
+
+            this.runSyncAllBatches({
+                batchSize,
+                offset: payload.next_offset || (offset + batchSize),
+                submitButton,
+                statusDiv,
+                syncedTotal: nextSyncedTotal
+            });
+        })
+        .catch(() => {
+            this.renderSyncStatus(statusDiv, 'Batch sync failed.', 'error');
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Sync All Products';
+            }
+        });
+    }
+
+    renderSyncStatus(element, message, type) {
+        if (!element) {
+            return;
+        }
+
+        const notice = document.createElement('div');
+        notice.className = `notice notice-${type === 'error' ? 'error' : type === 'success' ? 'success' : 'info'}`;
+
+        const paragraph = document.createElement('p');
+        paragraph.textContent = message;
+        notice.appendChild(paragraph);
+
+        element.innerHTML = '';
+        element.appendChild(notice);
+    }
+
+    renderSyncProgress(element, {processed, total, synced, done, starting = false}) {
+        if (!element) {
+            return;
+        }
+
+        const percent = total > 0 ? Math.min(Math.round((processed / total) * 100), 100) : (done ? 100 : 0);
+        const label = starting
+            ? 'Starting sync\u2026'
+            : done
+                ? `Sync complete \u2014 ${synced.toLocaleString()} of ${total.toLocaleString()} products synced.`
+                : `Syncing\u2026 ${processed.toLocaleString()} / ${total.toLocaleString()} products (${percent}%)`;
+
+        element.innerHTML = `
+            <div class="aivesese-sync-progress">
+                <div class="aivesese-progress-bar-wrap">
+                    <div class="aivesese-progress-bar${done ? ' is-done' : ''}" style="width:${starting ? 0 : percent}%"></div>
+                </div>
+                <p class="aivesese-progress-label${done ? ' is-done' : ''}">${label}</p>
+            </div>`;
     }
 
     /**
@@ -222,6 +363,10 @@ class AIVectorSearchAdmin {
 
         forms.forEach(form => {
             form.addEventListener('submit', () => {
+                if (form.matches('[data-aivesese-sync-all-form="1"]')) {
+                    return;
+                }
+
                 const button = form.querySelector('button[type=submit]');
                 if (button) {
                     button.innerHTML = 'Processing...';
