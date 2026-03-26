@@ -208,8 +208,11 @@ $total_products = wp_count_posts('product')->publish ?? 0;
                 </div>
 
                 <div class="option-pricing">
-                    <div class="price"><strong>$29/month</strong></div>
-                    <div class="price-note">All-inclusive</div>
+                    <div class="price">
+                        <strong>19 EUR/month</strong>
+                        <span class="original-price" style="margin-left: 8px; text-decoration: line-through; opacity: 0.7;">29 EUR/month</span>
+                    </div>
+                    <div class="price-note">Discounted until June 1. All-inclusive.</div>
                 </div>
             </div>
         </label>
