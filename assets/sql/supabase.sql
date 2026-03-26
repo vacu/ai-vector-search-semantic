@@ -39,8 +39,13 @@ create table if not exists products (
   regular_price   numeric(10,2),
   sale_price      numeric(10,2),
   cost_price      numeric(10,2),
-  margin          numeric generated always as
-                   (regular_price - cost_price) stored,
+  margin          numeric(6,2) generated always as (
+                    case
+                      when regular_price > 0 and cost_price is not null
+                      then round(((regular_price - cost_price) / regular_price) * 100, 2)
+                      else null
+                    end
+                  ) stored,
   stock_quantity  int,
   stock_status    text default 'in',            -- in / out / backorder
 
@@ -376,3 +381,24 @@ $$;
 /* ──────────────────────────────────────────────────────────────
    8. DONE
    ────────────────────────────────────────────────────────────── */
+
+/* ──────────────────────────────────────────────────────────────
+   MIGRATIONS
+   Run these in order against existing databases when upgrading.
+   New installs: the CREATE TABLE above already includes the
+   correct definition — skip the relevant migration.
+   ────────────────────────────────────────────────────────────── */
+
+/* v1.0.2 — Fix margin column: was raw profit (price - cost),
+            now a percentage with a NULL guard so products with
+            no cost or zero price return NULL instead of garbage.
+   Generated columns cannot be altered in-place; drop and re-add. */
+alter table products drop column if exists margin;
+alter table products
+  add column margin numeric(6,2) generated always as (
+    case
+      when regular_price > 0 and cost_price is not null
+      then round(((regular_price - cost_price) / regular_price) * 100, 2)
+      else null
+    end
+  ) stored;
