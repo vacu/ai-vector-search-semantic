@@ -1,0 +1,225 @@
+/**
+ * Frontend Search Autocomplete Styles
+ * File: assets/css/search-autocomplete.css
+ */
+
+/* Anchor the dropdown to the search container */
+.widget_product_search,
+.woocommerce-product-search,
+.woodmart-ajax-search {
+    position: relative;
+}
+
+/* Dropdown panel — floats over page content */
+.search-results-wrapper {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+/* Result lists */
+.search-results-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Individual result row */
+.search-result-item {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item .result-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+}
+
+.search-result-item .result-link:hover {
+    background: #f7f7f7;
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Thumbnail */
+.result-image {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: #f5f5f5;
+}
+
+.result-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.result-image-placeholder {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    background: #f0f0f0;
+    border-radius: 3px;
+}
+
+/* Text content */
+.result-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.result-title {
+    margin: 0 0 3px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #333;
+}
+
+.result-title mark {
+    background: transparent;
+    color: inherit;
+    font-weight: 700;
+    padding: 0;
+}
+
+.result-price {
+    font-size: 12px;
+    color: #555;
+    margin: 0;
+}
+
+.result-price .woocommerce-Price-amount {
+    font-weight: 600;
+}
+
+.result-sku {
+    font-size: 11px;
+    color: #999;
+    margin: 2px 0 0;
+}
+
+/* Autocomplete term / category rows */
+.search-result-item-term .result-link,
+.search-result-item-category .result-link {
+    padding: 8px 14px;
+}
+
+.search-result-item-term .result-title,
+.search-result-item-category .result-title {
+    font-weight: 400;
+    color: #444;
+}
+
+.search-result-item-term .result-sku,
+.search-result-item-category .result-sku {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #aaa;
+}
+
+/* Footer */
+.search-results-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+}
+
+.results-count {
+    font-size: 11px;
+    color: #999;
+}
+
+.view-all-results {
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    color: #333;
+}
+
+.view-all-results:hover {
+    text-decoration: underline;
+    color: #000;
+}
+
+/* Loading state */
+.search-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    color: #888;
+    font-size: 13px;
+}
+
+.loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ddd;
+    border-top-color: #555;
+    border-radius: 50%;
+    animation: aivs-spin 0.6s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes aivs-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* No results */
+.search-no-results {
+    padding: 14px;
+    font-size: 13px;
+    color: #555;
+}
+
+.search-no-results p {
+    margin: 0 0 8px;
+}
+
+.no-results-suggestions {
+    font-size: 12px;
+    color: #888;
+}
+
+.no-results-suggestions p {
+    margin: 0 0 4px;
+}
+
+.no-results-suggestions ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.no-results-suggestions li {
+    margin: 2px 0;
+}

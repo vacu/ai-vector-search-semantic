@@ -27,6 +27,11 @@ class AIVectorSearch_Search_Handler {
             return;
         }
 
+        add_action('wp_ajax_aivesese_autocomplete', [$this, 'handle_search_autocomplete']);
+        add_action('wp_ajax_nopriv_aivesese_autocomplete', [$this, 'handle_search_autocomplete']);
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_search_nonce']);
+        add_action('wp_footer', [$this, 'render_search_templates']);
+
         // Regular WordPress search interception
         add_action('pre_get_posts', [$this, 'intercept_product_search'], 9999);
 
@@ -60,8 +65,6 @@ class AIVectorSearch_Search_Handler {
         // Fallback method using pre_get_posts
         add_action('pre_get_posts', [$this, 'intercept_woodmart_query'], 1);
 
-        // Enqueue nonce for frontend
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_search_nonce']);
     }
 
     /**
@@ -81,6 +84,107 @@ class AIVectorSearch_Search_Handler {
             'nonce' => wp_create_nonce('aivesese_search_nonce'),
             'ajax_url' => admin_url('admin-ajax.php')
         ]);
+
+        $autocomplete_enabled = $this->is_autocomplete_enabled();
+        $woodmart_enabled = get_option('aivesese_enable_woodmart_integration', '0') === '1';
+
+        if (!$autocomplete_enabled && !$woodmart_enabled) {
+            return;
+        }
+
+        wp_enqueue_style(
+            'aivesese-search-autocomplete',
+            AIVESESE_PLUGIN_URL . 'assets/css/search-autocomplete.css',
+            [],
+            AIVESESE_PLUGIN_VERSION
+        );
+
+        wp_enqueue_script(
+            'aivesese-search-autocomplete',
+            AIVESESE_PLUGIN_URL . 'assets/js/search-autocomplete.js',
+            ['jquery'],
+            AIVESESE_PLUGIN_VERSION,
+            true
+        );
+
+        wp_localize_script('aivesese-search-autocomplete', 'aivesese_search', [
+            'ajax_url'             => admin_url('admin-ajax.php'),
+            'search_nonce'         => wp_create_nonce('aivesese_search_nonce'),
+            'tracking_nonce'       => wp_create_nonce('aivs_tracking_nonce'),
+            'enabled'              => '1',
+            'autocomplete_enabled' => $autocomplete_enabled ? '1' : '0',
+        ]);
+
+        if (!$woodmart_enabled) {
+            return;
+        }
+
+        wp_enqueue_script(
+            'aivesese-woodmart-integration',
+            AIVESESE_PLUGIN_URL . 'assets/js/woodmart-integration.js',
+            ['jquery', 'aivesese-search-autocomplete'],
+            AIVESESE_PLUGIN_VERSION,
+            true
+        );
+
+        wp_localize_script('aivesese-woodmart-integration', 'aivesese_woodmart', [
+            'ajax_url'             => admin_url('admin-ajax.php'),
+            'search_nonce'         => wp_create_nonce('aivesese_search_nonce'),
+            'tracking_nonce'       => wp_create_nonce('aivs_tracking_nonce'),
+            'enabled'              => '1',
+            'autocomplete_enabled' => $autocomplete_enabled ? '1' : '0',
+        ]);
+    }
+
+    /**
+     * Output the HTML <template> elements used by the autocomplete JS.
+     * Supports theme overrides: place the file at
+     * your-theme/aivesese/search-autocomplete.php to customise the markup.
+     */
+    public function render_search_templates() {
+        if (!$this->is_autocomplete_enabled() && get_option('aivesese_enable_woodmart_integration', '0') !== '1') {
+            return;
+        }
+
+        $template = locate_template('aivesese/search-autocomplete.php');
+
+        if (!$template) {
+            $template = AIVESESE_PLUGIN_PATH . 'templates/search-autocomplete.php';
+        }
+
+        include $template;
+    }
+
+    /**
+     * Handle lightweight autocomplete requests.
+     */
+    public function handle_search_autocomplete() {
+        if (!wp_verify_nonce($_REQUEST['nonce'] ?? '', 'aivesese_search_nonce')) {
+            wp_send_json_error(['message' => 'Security check failed']);
+            return;
+        }
+
+        if (!$this->is_autocomplete_enabled()) {
+            wp_send_json_error(['message' => 'Autocomplete is disabled']);
+            return;
+        }
+
+        $query = sanitize_text_field(wp_unslash($_REQUEST['query'] ?? ''));
+        $requested_limit = isset($_REQUEST['limit']) ? absint($_REQUEST['limit']) : 0;
+        $limit = $requested_limit > 0 ? min($requested_limit, 8) : 8;
+
+        if (strlen($query) < 2) {
+            wp_send_json_success([
+                'query' => $query,
+                'terms' => [],
+                'products' => [],
+                'categories' => [],
+                'view_all_url' => $this->get_search_results_url($query),
+            ]);
+            return;
+        }
+
+        wp_send_json_success($this->get_autocomplete_results($query, $limit));
     }
 
     /**
@@ -106,7 +210,7 @@ class AIVectorSearch_Search_Handler {
         $query = sanitize_text_field(wp_unslash($_REQUEST['query'] ?? ''));
         $number = intval($_REQUEST['number'] ?? $_REQUEST['limit'] ?? 20);
 
-        if (strlen($query) < 3) {
+        if (strlen($query) < 2) {
             if ($action === 'aivs_woodmart_search') {
                 wp_send_json_success([]);
             } else {
@@ -168,6 +272,55 @@ class AIVectorSearch_Search_Handler {
             wp_send_json(['suggestions' => $suggestions]);
         }
         exit;
+    }
+
+    /**
+     * Build autocomplete payload without recording a full search event.
+     */
+    public function get_autocomplete_results(string $term, int $limit = 8): array {
+        $limit = max(1, min($limit, 8));
+        $product_limit = min(5, $limit);
+        $term_limit = min(3, $limit);
+        $category_limit = min(3, $limit);
+
+        $products = $this->build_autocomplete_product_results($term, $product_limit);
+        $terms = [];
+        foreach ($this->get_search_suggestions($term, $term_limit) as $suggestion) {
+            $terms[] = [
+                'text' => $suggestion,
+                'url' => $this->get_search_results_url($suggestion),
+            ];
+        }
+
+        $categories = [];
+        $matched_categories = get_terms([
+            'taxonomy' => 'product_cat',
+            'hide_empty' => true,
+            'name__like' => $term,
+            'number' => $category_limit,
+        ]);
+
+        if (!is_wp_error($matched_categories) && !empty($matched_categories)) {
+            foreach ($matched_categories as $category) {
+                $url = get_term_link($category);
+                if (is_wp_error($url)) {
+                    continue;
+                }
+
+                $categories[] = [
+                    'text' => $category->name,
+                    'url' => $url,
+                ];
+            }
+        }
+
+        return [
+            'query' => $term,
+            'terms' => $terms,
+            'products' => $products,
+            'categories' => $categories,
+            'view_all_url' => $this->get_search_results_url($term),
+        ];
     }
 
     /**
@@ -550,6 +703,98 @@ class AIVectorSearch_Search_Handler {
         return $matching_suggestions;
     }
 
+    private function build_autocomplete_product_results(string $term, int $limit): array {
+        $product_ids = $this->get_autocomplete_product_ids($term, $limit);
+        $results = [];
+
+        foreach ($product_ids as $product_id) {
+            $product = wc_get_product($product_id);
+            if (!$product || $product->get_status() !== 'publish') {
+                continue;
+            }
+
+            $image_id = get_post_thumbnail_id($product_id);
+            $image = $image_id ? wp_get_attachment_image_src($image_id, 'woocommerce_gallery_thumbnail')[0] : '';
+
+            $results[] = [
+                'id' => $product_id,
+                'name' => $product->get_name(),
+                'url' => add_query_arg([
+                    'from_search' => '1',
+                    'search_term' => rawurlencode($term),
+                ], get_permalink($product_id)),
+                'price' => $product->get_price_html(),
+                'image' => $image,
+                'sku' => $product->get_sku(),
+            ];
+        }
+
+        return $results;
+    }
+
+    private function get_autocomplete_product_ids(string $term, int $limit): array {
+        global $wpdb;
+
+        $like_prefix = $wpdb->esc_like($term) . '%';
+        $like_contains = '%' . $wpdb->esc_like($term) . '%';
+
+        $sql = $wpdb->prepare(
+            "SELECT p.ID
+            FROM {$wpdb->posts} p
+            LEFT JOIN {$wpdb->postmeta} pm
+                ON pm.post_id = p.ID
+               AND pm.meta_key = '_sku'
+            WHERE p.post_type IN ('product', 'product_variation')
+              AND p.post_status = 'publish'
+              AND (
+                    p.post_title LIKE %s
+                 OR p.post_title LIKE %s
+                 OR pm.meta_value LIKE %s
+                 OR pm.meta_value LIKE %s
+              )
+            GROUP BY p.ID
+            ORDER BY
+                MAX(
+                    CASE
+                        WHEN p.post_title LIKE %s THEN 120
+                        WHEN pm.meta_value LIKE %s THEN 110
+                        WHEN p.post_title LIKE %s THEN 80
+                        WHEN pm.meta_value LIKE %s THEN 70
+                        ELSE 0
+                    END
+                ) DESC,
+                p.post_title ASC
+            LIMIT %d",
+            $like_prefix,
+            $like_contains,
+            $like_prefix,
+            $like_contains,
+            $like_prefix,
+            $like_prefix,
+            $like_contains,
+            $like_contains,
+            $limit
+        );
+
+        if (!$sql) {
+            return [];
+        }
+
+        $ids = $wpdb->get_col($sql);
+        if (!is_array($ids) || empty($ids)) {
+            return [];
+        }
+
+        return array_slice($this->normalize_product_ids(array_map('intval', $ids)), 0, $limit);
+    }
+
+    private function get_search_results_url(string $term): string {
+        return add_query_arg([
+            's' => $term,
+            'post_type' => 'product',
+        ], home_url('/'));
+    }
+
     /**
      * Get trending searches
      */
@@ -645,5 +890,9 @@ class AIVectorSearch_Search_Handler {
      */
     private function is_search_enabled(): bool {
         return get_option('aivesese_enable_search', '1') === '1';
+    }
+
+    private function is_autocomplete_enabled(): bool {
+        return get_option('aivesese_enable_search_autocomplete', '0') === '1';
     }
 }

@@ -78,6 +78,7 @@ class AIVectorSearch_Admin_Interface
             'enable_pdp_similar' => 'PDP "Similar products"',
             'enable_cart_below' => 'Below-cart recommendations',
             'enable_woodmart_integration' => 'Woodmart live search integration',
+            'enable_search_autocomplete' => 'Search autocomplete',
             'search_results_limit' => 'Search Results Limit',
             'lite_index_limit' => 'Lite Mode Index Limit',
             'lite_stopwords' => 'Lite Mode Stopwords',
@@ -130,11 +131,11 @@ class AIVectorSearch_Admin_Interface
         }
 
         // Special handling for checkboxes
-        if (in_array($id, ['enable_search', 'semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration'])) {
+        if (in_array($id, ['enable_search', 'semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration', 'enable_search_autocomplete'])) {
             $config['sanitize_callback'] = function ($v) {
                 return $v === '1' ? '1' : '0';
             };
-            $config['default'] = $id === 'enable_woodmart_integration' ? '0' : '1';
+            $config['default'] = in_array($id, ['enable_woodmart_integration', 'enable_search_autocomplete'], true) ? '0' : '1';
         }
 
         register_setting('aivesese_settings', "aivesese_{$id}", $config);
@@ -237,7 +238,8 @@ class AIVectorSearch_Admin_Interface
             'auto_sync' => 'Auto-sync products - Automatically sync products when saved/updated',
             'enable_pdp_similar' => 'PDP "Similar products" - Show similar products on product pages',
             'enable_cart_below' => 'Below-cart recommendations - Show recommendations under cart',
-            'enable_woodmart_integration' => 'Woodmart live search integration - Enable AI search for Woodmart AJAX search',
+            'enable_woodmart_integration' => 'Live search integration - Replace theme AJAX search with AI-powered product results (supports Woodmart &amp; Storefront)',
+            'enable_search_autocomplete' => 'Search autocomplete - Enhance the dropdown with term suggestions and category links in addition to products',
         ];
 
         foreach ($checkbox_fields as $id => $label) {
@@ -1334,23 +1336,6 @@ class AIVectorSearch_Admin_Interface
             ]);
         }
 
-        // Woodmart integration (if enabled)
-        if (get_option('aivesese_enable_woodmart_integration', '0') === '1') {
-            wp_enqueue_script(
-                'aivesese-woodmart-integration',
-                AIVESESE_PLUGIN_URL . 'assets/js/woodmart-integration.js',
-                ['jquery'],
-                AIVESESE_PLUGIN_VERSION,
-                true
-            );
-
-            wp_localize_script('aivesese-woodmart-integration', 'aivesese_woodmart', [
-                'ajax_url' => admin_url('admin-ajax.php'),
-                'search_nonce' => wp_create_nonce('aivesese_search_nonce'),
-                'tracking_nonce' => wp_create_nonce('aivs_tracking_nonce'),
-                'enabled' => '1',
-            ]);
-        }
     }
 
     public function show_services_banner()
