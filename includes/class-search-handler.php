@@ -280,34 +280,40 @@ class AIVectorSearch_Search_Handler {
             $ids = $this->search_semantic($term, $limit);
 
             if (count($ids) < 3) {
-                $ids = array_unique(array_merge(
-                    $ids,
-                    $this->search_fulltext($term, $limit)
-                ));
+                $ids = $this->merge_ranked_ids($ids, $this->search_fulltext($term, $limit), $limit);
             }
 
-            // If still no results, try SKU search as fallback
+            if (count($ids) < 3) {
+                $ids = $this->merge_ranked_ids($ids, $this->search_fuzzy($term, $limit), $limit);
+            }
+
+            if (count($ids) < 3) {
+                $ids = $this->merge_ranked_ids($ids, $this->search_partial_term_matches($term, $limit), $limit);
+            }
+
             if (empty($ids)) {
                 $ids = $this->search_sku($term, $limit);
             }
 
-            return $ids;
+            return array_slice($ids, 0, $limit);
         }
 
         // For non-semantic search
         $ids = $this->search_fulltext($term, $limit);
 
-        // If no results from full-text search, try SKU search as fallback
+        if (count($ids) < 3) {
+            $ids = $this->merge_ranked_ids($ids, $this->search_fuzzy($term, $limit), $limit);
+        }
+
+        if (count($ids) < 3) {
+            $ids = $this->merge_ranked_ids($ids, $this->search_partial_term_matches($term, $limit), $limit);
+        }
+
         if (empty($ids)) {
             $ids = $this->search_sku($term, $limit);
         }
 
-        // Add fuzzy search as final fallback for non-semantic search too
-        if (empty($ids)) {
-            $ids = $this->search_fuzzy($term, $limit);
-        }
-
-        return $ids;
+        return array_slice($ids, 0, $limit);
     }
 
     /**
@@ -390,6 +396,101 @@ class AIVectorSearch_Search_Handler {
      */
     private function search_fuzzy(string $term, int $limit): array {
         return $this->connection_manager->search_products_fuzzy($term, $limit);
+    }
+
+    /**
+     * Try token-level matches when the full phrase is too strict.
+     */
+    private function search_partial_term_matches(string $term, int $limit): array {
+        $tokens = $this->extract_search_tokens($term);
+        if (count($tokens) < 2) {
+            return [];
+        }
+
+        $scores = [];
+        $max_tokens = min(5, count($tokens));
+        $tokens = array_slice($tokens, 0, $max_tokens);
+
+        foreach ($tokens as $token) {
+            $token_weight = 1 + (min(strlen($token), 12) / 12);
+
+            $this->apply_ranked_scores(
+                $scores,
+                $this->search_fulltext($token, $limit),
+                4.0 * $token_weight
+            );
+
+            $this->apply_ranked_scores(
+                $scores,
+                $this->search_fuzzy($token, $limit),
+                2.5 * $token_weight
+            );
+
+            if (strlen($token) >= 2) {
+                $this->apply_ranked_scores(
+                    $scores,
+                    $this->search_sku($token, $limit),
+                    1.5 * $token_weight
+                );
+            }
+        }
+
+        if (empty($scores)) {
+            return [];
+        }
+
+        arsort($scores, SORT_NUMERIC);
+        return array_slice(array_map('intval', array_keys($scores)), 0, $limit);
+    }
+
+    private function extract_search_tokens(string $term): array {
+        $normalized = strtolower(remove_accents(wp_strip_all_tags($term)));
+        $tokens = preg_split('/[^\p{L}\p{N}]+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY);
+
+        if (!is_array($tokens)) {
+            return [];
+        }
+
+        $tokens = array_filter($tokens, static function ($token) {
+            return strlen($token) >= 2;
+        });
+
+        $tokens = array_values(array_unique($tokens));
+
+        usort($tokens, static function ($left, $right) {
+            return strlen($right) <=> strlen($left);
+        });
+
+        return $tokens;
+    }
+
+    private function apply_ranked_scores(array &$scores, array $ids, float $base_weight): void {
+        foreach (array_values($ids) as $position => $id) {
+            $id = intval($id);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $rank_weight = 1 / ($position + 1);
+            if (!isset($scores[$id])) {
+                $scores[$id] = 0.0;
+            }
+
+            $scores[$id] += $base_weight * $rank_weight;
+        }
+    }
+
+    private function merge_ranked_ids(array $primary, array $secondary, int $limit): array {
+        if (empty($primary)) {
+            return array_slice(array_values(array_unique($secondary)), 0, $limit);
+        }
+
+        if (empty($secondary)) {
+            return array_slice(array_values(array_unique($primary)), 0, $limit);
+        }
+
+        $merged = array_values(array_unique(array_merge($primary, $secondary)));
+        return array_slice($merged, 0, $limit);
     }
 
     /**
