@@ -85,7 +85,7 @@ All API keys are encrypted in your WordPress database. Self-hosted mode keeps yo
 **Transparent Pricing:**
 * **Lite Mode:** Free forever, runs locally
 * **Self-Hosted Supabase:** Free tier includes 50,000 queries/month. Optional OpenAI embeddings cost ~$0.05-$1.00 per 1,000 products (one-time setup cost only)
-* **Managed API Service:** 19 EUR/month discounted until June 1 (regular price 29 EUR/month), including infrastructure costs
+* **Managed API Service:** Subscription-based pricing includes all infrastructure costs
 
 **No Data Lock-In:**
 You always maintain access to your product data. Switch modes or export your data anytime.
