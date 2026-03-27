@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.9.1
 Woocommerce tested up to: 10.5.3
 Requires PHP: 8.0
-Stable Tag: 1.0.1
+Stable Tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,8 @@ Let us handle everything. Simply activate with your license key and we manage th
 **Intelligent Search Technology:**
 * **Semantic Understanding** - AI knows "running shoes" and "jogging sneakers" mean the same thing
 * **Fuzzy Matching** - Handles typos and misspellings gracefully
+* **Autocomplete Suggestions** - Show matching products, suggested search phrases, and category links while customers type
+* **Partial Query Matching** - Finds relevant products even when shoppers type incomplete multi-word searches
 * **SKU & Product Code Search** - Find products instantly by partial EAN, UPC, ISBN, or SKU
 * **Hybrid Search** - Combines full-text, semantic, and code-based search for best results
 * **Lightning Fast** - Search happens on optimized PostgreSQL infrastructure, not your WordPress server
@@ -56,6 +58,7 @@ Let us handle everything. Simply activate with your license key and we manage th
 * **WP-CLI Commands** - Professional schema installation, testing, and product sync via command line
 * **Auto-Sync** - Products automatically sync when saved or updated
 * **Batch Processing** - Handle large catalogs efficiently with intelligent batching
+* **Selective Field Sync** - Refresh cost, price, and stock fields across synced products without re-syncing the full catalog
 * **Health Monitoring** - Built-in status checks and diagnostics
 * **Encrypted Security** - API keys stored with enterprise-grade encryption and master key support
 
@@ -82,7 +85,7 @@ All API keys are encrypted in your WordPress database. Self-hosted mode keeps yo
 **Transparent Pricing:**
 * **Lite Mode:** Free forever, runs locally
 * **Self-Hosted Supabase:** Free tier includes 50,000 queries/month. Optional OpenAI embeddings cost ~$0.05-$1.00 per 1,000 products (one-time setup cost only)
-* **Managed API Service:** Subscription-based pricing includes all infrastructure costs
+* **Managed API Service:** 19 EUR/month discounted until June 1 (regular price 29 EUR/month), including infrastructure costs
 
 **No Data Lock-In:**
 You always maintain access to your product data. Switch modes or export your data anytime.
@@ -107,6 +110,8 @@ Built by developers for developers, with comprehensive documentation, WP-CLI sup
    - Add your OpenAI API key to generate embeddings (self-hosted or API modes).
    - Choose the search mode that fits your catalog and budget.
 5. **(Optional) Run a product sync** from **AI Vector Search -> Sync Products** or with `wp aivs sync-products` when using Self-Hosted Supabase or Managed API mode.
+6. **(Optional) Enable Search Autocomplete** in settings to show product suggestions, matching terms, and categories in frontend search dropdowns.
+7. **(Optional) Run a field-only sync** from **AI Vector Search -> Sync Products** when you need to refresh prices, stock, or cost values without a full catalog sync.
 
 ### Command Line Tools (WP-CLI)
 
@@ -116,7 +121,7 @@ Speed up setup and maintenance with new WP-CLI commands (requires the PostgreSQL
 * `wp aivs test-connection` - confirm credentials before running migrations.
 * `wp aivs sync-products` - batch sync products after catalog changes.
 
-The Sync Products screen now supports browser-driven full catalog sync in configurable batches, with live progress feedback to avoid admin page timeouts on larger stores.
+The Sync Products screen now supports browser-driven full catalog sync in configurable batches, with live progress feedback to avoid admin page timeouts on larger stores. It also includes field-only batch sync for `cost_price`, `regular_price`, `sale_price`, `stock_quantity`, and `stock_status`.
 
 You can also trigger schema installation from the admin UI; both paths use the encrypted PostgreSQL connection string you store under **Settings  AI Supabase**.
 
@@ -137,10 +142,11 @@ You can also trigger schema installation from the admin UI; both paths use the e
 1. Dashboard notice showing new WP-CLI support and quick setup actions.
 2. Settings menu entries added by AI Vector Search (Search Analytics, Supabase Status, Sync Products).
 3. Search Analytics dashboard with success rate, CTR, and popular search terms.
-4. Main plugin settings page with Supabase and OpenAI configuration, plus WP-CLI schema installation.
+4. Main plugin settings page with Supabase and OpenAI configuration, plus toggles for live search integration and search autocomplete.
 5. Status page showing store health overview and configuration summary.
-6. Sync Products page with browser-driven batch progress, full sync controls, and embeddings generation options.
-7. Setup guide for manual and WP-CLI installation, including PostgreSQL connection and OpenAI configuration.
+6. Sync Products page with browser-driven batch progress, full sync controls, field-only sync actions, and embeddings generation options.
+7. Frontend autocomplete dropdown showing product matches, suggested terms, category links, and a view-all-results action.
+8. Setup guide for manual and WP-CLI installation, including PostgreSQL connection and OpenAI configuration.
 
 == ❓ Frequently Asked Questions ==
 
@@ -173,7 +179,11 @@ No! Search queries run on Supabase's fast PostgreSQL infrastructure, not your Wo
 
 = Does it work with my theme? =
 
-Yes! The plugin uses standard WordPress and WooCommerce hooks. It includes special integration for Woodmart theme's live search feature.
+Yes! The plugin uses standard WordPress and WooCommerce hooks. It includes live search support for Woodmart and standard WooCommerce product search forms, including optional autocomplete dropdowns.
+
+= What does Search Autocomplete add? =
+
+When enabled, the frontend search dropdown can show matching products, suggested search phrases, and product categories after just 2 characters. The markup is theme-overridable by copying `templates/search-autocomplete.php` to `your-theme/aivesese/search-autocomplete.php`.
 
 = Can I customize the search behavior? =
 
@@ -247,7 +257,16 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == 📝 Changelog ==
 
-= 1.0.1 (Latest) =
+= 1.0.2 (Latest) =
+* **New:** Frontend search autocomplete for standard WooCommerce search forms and Woodmart live search, with product suggestions, matching search terms, category links, and template overrides
+* **New:** Partial-query fallback improves results for incomplete multi-word searches by combining token-level full-text, fuzzy, and SKU matching
+* **New:** Sync Products page now supports field-only batch sync for Cost of Goods, regular price, sale price, stock quantity, and stock status
+* **Update:** Cost sync now detects WooCommerce native COGS plus additional common cost-price meta keys, with variation-aware averaging for variable products
+* **Update:** Managed API pricing in the admin UI now shows the 19 EUR/month discounted plan through June 1
+* **Update:** Supabase margin is now stored as a percentage with null guards, with upgrade SQL included for existing databases
+* **Compatibility:** Search requests now start at 2 characters for faster autocomplete and partial-match discovery
+
+= 1.0.1 =
 * **New:** Browser-driven full catalog sync now runs in AJAX batches with live progress feedback to avoid admin timeouts on large stores
 * **New:** Sync Products page now supports Managed API mode with mode-aware headings, validation, and synced-count reporting
 * **Update:** Sync overview now counts only searchable WooCommerce products and uses a shared connection manager for destination status
@@ -406,7 +425,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == ⬆️ Upgrade Notice ==
 
-= 1.0.1 (Latest) =
+= 1.0.2 (Latest) =
+Adds frontend autocomplete, stronger partial-query matching, and field-only batch sync for pricing, stock, and cost updates. Also updates the Supabase margin calculation to a percentage and documents the required upgrade SQL for existing databases.
+
+= 1.0.1 =
 Browser-driven catalog sync now runs in safe AJAX batches with progress feedback, the Sync Products screen supports Managed API mode more cleanly, and oversized product text fields are trimmed before API sync to prevent payload failures. Also tested up to WordPress 6.9.1 and WooCommerce 10.5.3.
 
 = 1.0.0 =
