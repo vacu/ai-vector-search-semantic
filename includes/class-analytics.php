@@ -46,6 +46,7 @@ class AIVectorSearch_Analytics {
         register_activation_hook(AIVESESE_PLUGIN_PATH . 'ai-supabase-search.php', [$this, 'create_table']);
 
         add_action('admin_init', [$this, 'check_database_version']);
+        add_action('admin_init', [$this, 'handle_clear_analytics_data']);
 
         // Add admin page
         add_action('admin_menu', [$this, 'add_analytics_page']);
@@ -216,21 +217,36 @@ class AIVectorSearch_Analytics {
     }
 
     /**
-     * Get search statistics
+     * Delete all analytics rows.
      */
-    public function get_search_stats(int $days = 30): array {
+    public function clear_all_data(): bool {
         global $wpdb;
 
+        $query = $this->inject_table_name('DELETE FROM {table}');
+        $deleted = $wpdb->query($query);
+
+        if ($deleted === false) {
+            return false;
+        }
+
+        $this->invalidate_cache();
+        return true;
+    }
+
+    /**
+     * Get search statistics
+     */
+    public function get_search_stats(int $days = 30, array $filters = []): array {
+        global $wpdb;
+
+        $filters = $this->normalize_period_filters($filters);
         $days = max(1, (int) $days);
-        $cache_key = $this->build_cache_key('search_stats', [$days]);
+        $cache_key = $this->build_cache_key('search_stats', [$days, $filters]);
         $found = false;
         $cached_stats = wp_cache_get($cache_key, $this->cache_group, false, $found);
         if ($found) {
             return $cached_stats;
         }
-
-        $seconds_per_day = defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
-        $date_limit = gmdate('Y-m-d H:i:s', time() - ($days * $seconds_per_day));
 
         $query = $this->inject_table_name('SELECT
                 COUNT(*) as total_searches,
@@ -239,8 +255,8 @@ class AIVectorSearch_Analytics {
                 AVG(results_count) as avg_results_per_search,
                 COUNT(clicked_result_id) as total_clicks
             FROM {table}
-            WHERE created_at >= %s');
-        $prepared_sql = $wpdb->prepare($query, $date_limit);
+            WHERE 1=1');
+        $prepared_sql = $this->prepare_period_query($query, $filters, $days);
         $stats = $prepared_sql !== false ? $wpdb->get_row($prepared_sql) : null;
 
         if (!$stats) {
@@ -272,20 +288,18 @@ class AIVectorSearch_Analytics {
     /**
      * Get popular search terms
      */
-    public function get_popular_terms(int $limit = 10, int $days = 30): array {
+    public function get_popular_terms(int $limit = 10, int $days = 30, array $filters = []): array {
         global $wpdb;
 
         $limit = max(1, (int) $limit);
         $days = max(1, (int) $days);
-        $cache_key = $this->build_cache_key('popular_terms', [$limit, $days]);
+        $filters = $this->normalize_period_filters($filters);
+        $cache_key = $this->build_cache_key('popular_terms', [$limit, $days, $filters]);
         $found = false;
         $cached_terms = wp_cache_get($cache_key, $this->cache_group, false, $found);
         if ($found) {
             return $cached_terms;
         }
-
-        $seconds_per_day = defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
-        $date_limit = gmdate('Y-m-d H:i:s', time() - ($days * $seconds_per_day));
 
         $query = $this->inject_table_name('SELECT
                 search_term,
@@ -295,11 +309,11 @@ class AIVectorSearch_Analytics {
                 COUNT(clicked_result_id) as click_count,
                 ROUND((COUNT(clicked_result_id) / COUNT(*)) * 100, 1) as ctr_percent
             FROM {table}
-            WHERE created_at >= %s
+            WHERE 1=1
             GROUP BY search_term
             ORDER BY search_count DESC
             LIMIT %d');
-        $prepared_sql = $wpdb->prepare($query, $date_limit, $limit);
+        $prepared_sql = $this->prepare_period_query($query, $filters, $days, [$limit]);
         $results = $prepared_sql !== false ? $wpdb->get_results($prepared_sql) : [];
 
         $results = $results ?: [];
@@ -310,33 +324,31 @@ class AIVectorSearch_Analytics {
     /**
      * Get searches with no results (opportunity finder)
      */
-    public function get_zero_result_searches(int $limit = 10, int $days = 30): array {
+    public function get_zero_result_searches(int $limit = 10, int $days = 30, array $filters = []): array {
         global $wpdb;
 
         $limit = max(1, (int) $limit);
         $days = max(1, (int) $days);
-        $cache_key = $this->build_cache_key('zero_result_searches', [$limit, $days]);
+        $filters = $this->normalize_period_filters($filters);
+        $cache_key = $this->build_cache_key('zero_result_searches', [$limit, $days, $filters]);
         $found = false;
         $cached_results = wp_cache_get($cache_key, $this->cache_group, false, $found);
         if ($found) {
             return $cached_results;
         }
 
-        $seconds_per_day = defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
-        $date_limit = gmdate('Y-m-d H:i:s', time() - ($days * $seconds_per_day));
-
         $query = $this->inject_table_name('SELECT
                 search_term,
                 COUNT(*) as search_count,
                 MAX(created_at) as last_searched
             FROM {table}
-            WHERE created_at >= %s
+            WHERE 1=1
             AND results_found = 0
             GROUP BY search_term
             HAVING search_count >= 2
             ORDER BY search_count DESC
             LIMIT %d');
-        $prepared_sql = $wpdb->prepare($query, $date_limit, $limit);
+        $prepared_sql = $this->prepare_period_query($query, $filters, $days, [$limit]);
         $results = $prepared_sql !== false ? $wpdb->get_results($prepared_sql) : [];
 
         $results = $results ?: [];
@@ -347,10 +359,10 @@ class AIVectorSearch_Analytics {
     /**
      * Generate actionable business insights
      */
-    public function get_business_insights(): array {
+    public function get_business_insights(array $filters = []): array {
         $insights = [];
-        $stats = $this->get_search_stats();
-        $zero_results = $this->get_zero_result_searches(5);
+        $stats = $this->get_search_stats(30, $filters);
+        $zero_results = $this->get_zero_result_searches(5, 30, $filters);
 
         // Success rate insights
         if ($stats['success_rate'] < 80) {
@@ -393,13 +405,14 @@ class AIVectorSearch_Analytics {
     /**
      * Export analytics data (basic CSV for free version)
      */
-    public function export_search_data(string $format = 'csv'): string {
+    public function export_search_data(string $format = 'csv', array $filters = []): string {
         $format = strtolower($format);
         if ($format !== 'csv') {
             return '';
         }
 
-        $cache_key = $this->build_cache_key('export_search_data', [$format]);
+        $filters = $this->normalize_period_filters($filters);
+        $cache_key = $this->build_cache_key('export_search_data', [$format, $filters]);
         $found = false;
         $cached_export = wp_cache_get($cache_key, $this->cache_group, false, $found);
         if ($found) {
@@ -416,11 +429,12 @@ class AIVectorSearch_Analytics {
                 DATE(created_at) as search_date,
                 TIME(created_at) as search_time
             FROM {table}
-            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            WHERE 1=1
             ORDER BY created_at DESC
             LIMIT 1000');
 
-        $data = $wpdb->get_results($query);
+        $prepared_sql = $this->prepare_period_query($query, $filters, 30);
+        $data = $prepared_sql !== false ? $wpdb->get_results($prepared_sql) : [];
 
         $data = $data ?: [];
 
@@ -536,19 +550,15 @@ class AIVectorSearch_Analytics {
      * Render analytics dashboard (templated)
      */
     public function render_analytics_page_template() {
-        // Optional timeframe via query param (e.g., 7, 30, 90 or '7d')
         $days = 30;
-        if (isset($_GET['timeframe'])) {
-            $tf = sanitize_text_field(wp_unslash($_GET['timeframe']));
-            if (preg_match('/^(\d+)/', $tf, $m)) {
-                $days = max(1, (int) $m[1]);
-            }
-        }
+        $available_years = $this->get_available_years();
+        $filters = $this->get_period_filters_from_request($available_years);
+        $period_label = $this->get_period_label($filters, $days);
 
-        $stats = $this->get_search_stats($days);
-        $popular_terms = $this->get_popular_terms(10, $days);
-        $zero_results = $this->get_zero_result_searches(10, $days);
-        $insights = $this->get_business_insights();
+        $stats = $this->get_search_stats($days, $filters);
+        $popular_terms = $this->get_popular_terms(10, $days, $filters);
+        $zero_results = $this->get_zero_result_searches(10, $days, $filters);
+        $insights = $this->get_business_insights($filters);
 
         // Handle export
         if (isset($_GET['export'])) {
@@ -559,7 +569,7 @@ class AIVectorSearch_Analytics {
                     wp_die(esc_html__('Security check failed.', 'aivesese'));
                 }
 
-                $csv_data = $this->export_search_data('csv');
+                $csv_data = $this->export_search_data('csv', $filters);
                 header('Content-Type: text/csv');
                 header('Content-Disposition: attachment; filename="search-analytics-' . gmdate('Y-m-d') . '.csv"');
                 echo $csv_data;
@@ -670,6 +680,153 @@ class AIVectorSearch_Analytics {
     private function inject_table_name(string $sql_template): string {
         // Wrap table name in backticks for MySQL identifier safety
         return str_replace('{table}', '`' . $this->table_name_escaped . '`', $sql_template);
+    }
+
+    /**
+     * Parse month/year filters from the request.
+     */
+    private function get_period_filters_from_request(array $available_years = []): array {
+        $current_year = (int) gmdate('Y', current_time('timestamp'));
+        $default_year = $current_year;
+        if (!empty($available_years) && !in_array($current_year, $available_years, true)) {
+            $default_year = (int) $available_years[0];
+        }
+
+        $year = isset($_GET['year']) ? absint(wp_unslash($_GET['year'])) : $default_year;
+        $month = isset($_GET['month']) ? absint(wp_unslash($_GET['month'])) : 0;
+
+        return $this->normalize_period_filters([
+            'year' => $year,
+            'month' => $month,
+        ]);
+    }
+
+    /**
+     * Normalize month/year filter values.
+     */
+    private function normalize_period_filters(array $filters): array {
+        $year = isset($filters['year']) ? (int) $filters['year'] : 0;
+        $month = isset($filters['month']) ? (int) $filters['month'] : 0;
+
+        if ($year < 2000 || $year > 2100) {
+            $year = 0;
+        }
+
+        if ($month < 1 || $month > 12) {
+            $month = 0;
+        }
+
+        if ($year === 0) {
+            $month = 0;
+        }
+
+        return [
+            'year' => $year,
+            'month' => $month,
+        ];
+    }
+
+    /**
+     * Build the period WHERE clause and parameter list.
+     */
+    private function build_period_where(array $filters, int $days = 30): array {
+        $filters = $this->normalize_period_filters($filters);
+        $where = '';
+        $args = [];
+
+        if ($filters['year'] > 0) {
+            $where .= ' AND YEAR(created_at) = %d';
+            $args[] = $filters['year'];
+
+            if ($filters['month'] > 0) {
+                $where .= ' AND MONTH(created_at) = %d';
+                $args[] = $filters['month'];
+            }
+
+            return [$where, $args];
+        }
+
+        $seconds_per_day = defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
+        $date_limit = gmdate('Y-m-d H:i:s', time() - ($days * $seconds_per_day));
+        $where .= ' AND created_at >= %s';
+        $args[] = $date_limit;
+
+        return [$where, $args];
+    }
+
+    /**
+     * Prepare a query with optional period filters.
+     */
+    private function prepare_period_query(string $sql, array $filters, int $days = 30, array $tail_args = []) {
+        global $wpdb;
+
+        [$where, $args] = $this->build_period_where($filters, $days);
+        $sql .= $where;
+        $args = array_merge($args, $tail_args);
+
+        return empty($args) ? $sql : $wpdb->prepare($sql, ...$args);
+    }
+
+    /**
+     * Return years present in the analytics table.
+     */
+    private function get_available_years(): array {
+        global $wpdb;
+
+        $query = $this->inject_table_name('SELECT DISTINCT YEAR(created_at) AS year
+            FROM {table}
+            ORDER BY year DESC');
+        $rows = $wpdb->get_col($query);
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('intval', $rows)));
+    }
+
+    /**
+     * Build a human-readable label for the active period.
+     */
+    private function get_period_label(array $filters, int $days = 30): string {
+        $filters = $this->normalize_period_filters($filters);
+
+        if ($filters['year'] > 0 && $filters['month'] > 0) {
+            return gmdate('F Y', gmmktime(0, 0, 0, $filters['month'], 1, $filters['year']));
+        }
+
+        if ($filters['year'] > 0) {
+            return (string) $filters['year'];
+        }
+
+        return sprintf('Last %d days', $days);
+    }
+
+    /**
+     * Handle the dashboard clear-data action.
+     */
+    public function handle_clear_analytics_data() {
+        if (!is_admin() || !current_user_can('manage_options')) {
+            return;
+        }
+
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        $action = isset($_POST['aivs_analytics_action']) ? sanitize_key(wp_unslash($_POST['aivs_analytics_action'])) : '';
+
+        if ($page !== 'aivesese-analytics' || $action !== 'clear_data') {
+            return;
+        }
+
+        check_admin_referer('aivs_clear_analytics_data', 'aivs_clear_analytics_nonce');
+
+        $cleared = $this->clear_all_data();
+
+        $redirect_url = add_query_arg(
+            ['page' => 'aivesese-analytics', 'aivs_cleared' => $cleared ? '1' : '0'],
+            admin_url('admin.php')
+        );
+        wp_safe_redirect($redirect_url);
+        exit;
     }
 
     /**

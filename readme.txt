@@ -2,10 +2,10 @@
 Contributors: calingrim
 Tags: woocommerce, search, ai, semantic, recommendations
 Requires at least: 6.0
-Tested up to: 6.9.1
+Tested up to: 6.9.4
 Woocommerce tested up to: 10.5.3
 Requires PHP: 8.0
-Stable Tag: 1.0.2
+Stable Tag: 1.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,9 +49,11 @@ Let us handle everything. Simply activate with your license key and we manage th
 
 **Search Analytics Dashboard:**
 * Track search volume, success rates, and click-through rates
+* Filter analytics by year or month to review trends for specific periods
 * Identify popular search terms to optimize inventory
 * Get alerted when customers search for products you don't stock yet
-* Export analytics data for deeper analysis
+* Export analytics data for the selected reporting period
+* Clear analytics data from the dashboard when you need to reset reporting
 * Make data-driven merchandising decisions
 
 **Professional Setup & Management:**
@@ -141,7 +143,7 @@ You can also trigger schema installation from the admin UI; both paths use the e
 
 1. Dashboard notice showing new WP-CLI support and quick setup actions.
 2. Settings menu entries added by AI Vector Search (Search Analytics, Supabase Status, Sync Products).
-3. Search Analytics dashboard with success rate, CTR, and popular search terms.
+3. Search Analytics dashboard with year/month filters, success rate, CTR, and popular search terms.
 4. Main plugin settings page with Supabase and OpenAI configuration, plus toggles for live search integration and search autocomplete.
 5. Status page showing store health overview and configuration summary.
 6. Sync Products page with browser-driven batch progress, full sync controls, field-only sync actions, and embeddings generation options.
@@ -257,7 +259,14 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == 📝 Changelog ==
 
-= 1.0.2 (Latest) =
+= 1.0.3 (Latest) =
+* **New:** Search Analytics dashboard now supports year and month filters for focused reporting periods
+* **New:** Admins can clear all analytics data directly from the dashboard with nonce protection and confirmation
+* **Update:** CSV exports now respect the selected analytics period
+* **Update:** Analytics cards, tables, and empty states now show clearer active-period labels and cleaner dashboard copy
+* **Security:** Dashboard template output now consistently escapes dynamic analytics content
+
+= 1.0.2 =
 * **New:** Frontend search autocomplete for standard WooCommerce search forms and Woodmart live search, with product suggestions, matching search terms, category links, and template overrides
 * **New:** Partial-query fallback improves results for incomplete multi-word searches by combining token-level full-text, fuzzy, and SKU matching
 * **New:** Sync Products page now supports field-only batch sync for Cost of Goods, regular price, sale price, stock quantity, and stock status
@@ -425,7 +434,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == ⬆️ Upgrade Notice ==
 
-= 1.0.2 (Latest) =
+= 1.0.3 (Latest) =
+Adds year/month analytics filtering, period-aware CSV exports, a protected clear-analytics action, and dashboard polish for labels, notices, and escaped output.
+
+= 1.0.2 =
 Adds frontend autocomplete, stronger partial-query matching, and field-only batch sync for pricing, stock, and cost updates. Also updates the Supabase margin calculation to a percentage and documents the required upgrade SQL for existing databases.
 
 = 1.0.1 =

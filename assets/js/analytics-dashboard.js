@@ -14,6 +14,7 @@ class AnalyticsDashboard {
         this.initExportButtons();
         this.initInsightActions();
         this.initSearchPreview();
+        this.initDangerActions();
     }
 
     /**
@@ -33,18 +34,22 @@ class AnalyticsDashboard {
      * Initialize dashboard filters
      */
     initFilters() {
-        const timeFilters = document.querySelectorAll('.time-filter');
-        const searchTypeFilters = document.querySelectorAll('.search-type-filter');
+        const filterForm = document.querySelector('.aivs-analytics-filter-form');
+        if (!filterForm) {
+            return;
+        }
 
-        timeFilters.forEach(filter => {
-            filter.addEventListener('change', (e) => {
-                this.applyTimeFilter(e.target.value);
-            });
-        });
+        const filters = filterForm.querySelectorAll('.year-filter, .month-filter');
+        filters.forEach(filter => {
+            filter.addEventListener('change', () => {
+                const yearFilter = filterForm.querySelector('.year-filter');
+                const monthFilter = filterForm.querySelector('.month-filter');
 
-        searchTypeFilters.forEach(filter => {
-            filter.addEventListener('change', (e) => {
-                this.applySearchTypeFilter(e.target.value);
+                if (yearFilter && monthFilter && yearFilter.value === '0') {
+                    monthFilter.value = '0';
+                }
+
+                filterForm.submit();
             });
         });
     }
@@ -87,6 +92,23 @@ class AnalyticsDashboard {
         if (exportPdfBtn) {
             exportPdfBtn.addEventListener('click', () => this.exportData('pdf'));
         }
+    }
+
+    /**
+     * Initialize destructive actions.
+     */
+    initDangerActions() {
+        const clearForm = document.querySelector('.aivs-analytics-clear-form');
+        if (!clearForm) {
+            return;
+        }
+
+        clearForm.addEventListener('submit', (event) => {
+            const confirmed = window.confirm('Clear all analytics data? This cannot be undone.');
+            if (!confirmed) {
+                event.preventDefault();
+            }
+        });
     }
 
     /**
