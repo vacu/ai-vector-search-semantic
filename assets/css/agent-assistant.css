@@ -1,0 +1,143 @@
+.aivesese-agent {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 9999;
+}
+
+.aivesese-agent.is-shortcode {
+    position: relative;
+    right: auto;
+    bottom: auto;
+}
+
+.aivesese-agent__launcher {
+    border: 0;
+    border-radius: 999px;
+    background: #111827;
+    color: #fff;
+    padding: 14px 18px;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(17, 24, 39, 0.2);
+}
+
+.aivesese-agent__panel {
+    width: min(380px, calc(100vw - 32px));
+    height: 560px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 18px;
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+}
+
+.aivesese-agent__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 18px;
+    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #f8fafc, #eef2ff);
+}
+
+.aivesese-agent__close {
+    background: transparent;
+    border: 0;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.aivesese-agent__messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #f8fafc;
+}
+
+.aivesese-agent__message {
+    margin-bottom: 12px;
+}
+
+.aivesese-agent__message--user {
+    text-align: right;
+}
+
+.aivesese-agent__bubble {
+    display: inline-block;
+    max-width: 90%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #fff;
+    color: #111827;
+    border: 1px solid #e5e7eb;
+}
+
+.aivesese-agent__message--user .aivesese-agent__bubble {
+    background: #111827;
+    border-color: #111827;
+    color: #fff;
+}
+
+.aivesese-agent__composer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 16px;
+    border-top: 1px solid #e5e7eb;
+    background: #fff;
+}
+
+.aivesese-agent__composer textarea {
+    resize: none;
+    min-height: 48px;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    padding: 10px 12px;
+}
+
+.aivesese-agent__products {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.aivesese-agent__product {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px;
+    background: #fff;
+}
+
+.aivesese-agent__product img {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+.aivesese-agent__product-link {
+    display: block;
+    color: #111827;
+    text-decoration: none;
+}
+
+.aivesese-agent__product-price {
+    margin: 8px 0 10px;
+}
+
+@media (max-width: 640px) {
+    .aivesese-agent {
+        right: 12px;
+        bottom: 12px;
+        left: 12px;
+    }
+
+    .aivesese-agent__panel {
+        width: 100%;
+        height: 72vh;
+    }
+}

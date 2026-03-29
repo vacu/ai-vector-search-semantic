@@ -79,6 +79,9 @@ class AIVectorSearch_Admin_Interface
             'enable_cart_below' => 'Below-cart recommendations',
             'enable_woodmart_integration' => 'Woodmart live search integration',
             'enable_search_autocomplete' => 'Search autocomplete',
+            'enable_agent' => 'Enable Agent Assistant',
+            'agent_model' => 'Agent Model',
+            'agent_disclaimer' => 'Agent Disclaimer',
             'search_results_limit' => 'Search Results Limit',
             'lite_index_limit' => 'Lite Mode Index Limit',
             'lite_stopwords' => 'Lite Mode Stopwords',
@@ -104,6 +107,8 @@ class AIVectorSearch_Admin_Interface
             'openai' => 'aivesese_passthru',
             'postgres_connection_string' => 'aivesese_passthru', // Will be encrypted
             'search_results_limit' => [$this, 'sanitize_search_results_limit'],
+            'agent_model' => 'sanitize_text_field',
+            'agent_disclaimer' => [$this, 'sanitize_agent_disclaimer'],
             'lite_index_limit' => 'absint',
             'lite_stopwords' => [$this, 'sanitize_lite_stopwords'],
             'lite_synonyms' => [$this, 'sanitize_lite_synonyms'],
@@ -131,11 +136,11 @@ class AIVectorSearch_Admin_Interface
         }
 
         // Special handling for checkboxes
-        if (in_array($id, ['enable_search', 'semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration', 'enable_search_autocomplete'])) {
+        if (in_array($id, ['enable_search', 'semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration', 'enable_search_autocomplete', 'enable_agent'], true)) {
             $config['sanitize_callback'] = function ($v) {
                 return $v === '1' ? '1' : '0';
             };
-            $config['default'] = in_array($id, ['enable_woodmart_integration', 'enable_search_autocomplete'], true) ? '0' : '1';
+            $config['default'] = in_array($id, ['enable_woodmart_integration', 'enable_search_autocomplete', 'enable_agent'], true) ? '0' : '1';
         }
 
         register_setting('aivesese_settings', "aivesese_{$id}", $config);
@@ -172,6 +177,15 @@ class AIVectorSearch_Admin_Interface
         }
 
         return $limit;
+    }
+
+    public function sanitize_agent_disclaimer($value): string
+    {
+        if (!is_string($value)) {
+            return '';
+        }
+
+        return sanitize_textarea_field(wp_unslash($value));
     }
 
     private function add_settings_fields()
@@ -227,6 +241,30 @@ class AIVectorSearch_Admin_Interface
             'aivesese_search_results_limit',
             'Search Results Limit',
             [$this, 'render_search_limit_field'],
+            'aivesese',
+            'aivesese_section'
+        );
+
+        add_settings_field(
+            'aivesese_enable_agent',
+            'Enable Agent Assistant',
+            [$this, 'render_agent_enable_field'],
+            'aivesese',
+            'aivesese_section'
+        );
+
+        add_settings_field(
+            'aivesese_agent_model',
+            'Agent Model',
+            [$this, 'render_agent_model_field'],
+            'aivesese',
+            'aivesese_section'
+        );
+
+        add_settings_field(
+            'aivesese_agent_disclaimer',
+            'Agent Disclaimer',
+            [$this, 'render_agent_disclaimer_field'],
             'aivesese',
             'aivesese_section'
         );
@@ -322,6 +360,74 @@ class AIVectorSearch_Admin_Interface
         );
     }
 
+    public function render_agent_enable_field()
+    {
+        $status = class_exists('AIVectorSearch_Agent') ? AIVectorSearch_Agent::instance()->get_agent_status() : [];
+        $is_api_mode = get_option('aivesese_connection_mode', 'lite') === 'api';
+        $available = $is_api_mode && !empty($status['enabled']);
+        $value = get_option('aivesese_enable_agent', '0');
+
+        echo '<input type="hidden" name="aivesese_enable_agent" value="0" />';
+        printf(
+            '<label><input type="checkbox" name="aivesese_enable_agent" value="1"%s%s> %s</label>',
+            checked($value, '1', false),
+            disabled($available, false, false),
+            esc_html__('Enable the managed storefront assistant for products and order status.', 'ai-vector-search-semantic')
+        );
+
+        if (!$is_api_mode) {
+            echo '<p class="description">The agent is available only in managed API mode.</p>';
+            return;
+        }
+
+        if (!$available) {
+            $reason = !empty($status['reason']) ? $status['reason'] : 'Your current API plan does not include the assistant.';
+            echo '<p class="description">' . esc_html($reason) . '</p>';
+            return;
+        }
+
+        echo '<p class="description">The agent uses separate analytics and only returns products that exist in the synced catalog.</p>';
+    }
+
+    public function render_agent_model_field()
+    {
+        $status = class_exists('AIVectorSearch_Agent') ? AIVectorSearch_Agent::instance()->get_agent_status() : [];
+        $models = is_array($status['models'] ?? null) ? $status['models'] : [];
+        $current = (string) get_option('aivesese_agent_model', 'gpt-4.1-mini');
+        $is_api_mode = get_option('aivesese_connection_mode', 'lite') === 'api';
+        $available = $is_api_mode && !empty($status['enabled']) && !empty($models);
+
+        if (!$available) {
+            echo '<p><em>Agent models are available after API activation on a plan with assistant access.</em></p>';
+            return;
+        }
+
+        echo '<select id="aivesese_agent_model" name="aivesese_agent_model">';
+        foreach ($models as $model) {
+            $model_id = sanitize_text_field((string) ($model['id'] ?? ''));
+            $label = sanitize_text_field((string) ($model['label'] ?? $model_id));
+            if ($model_id === '') {
+                continue;
+            }
+
+            echo '<option value="' . esc_attr($model_id) . '"' . selected($current, $model_id, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select>';
+        echo '<p class="description">Curated models come from the managed API so pricing and compatibility stay controlled.</p>';
+    }
+
+    public function render_agent_disclaimer_field()
+    {
+        $value = (string) get_option('aivesese_agent_disclaimer', 'AI-generated responses use your synced catalog and verified customer order data. Review product details and checkout information before purchasing.');
+
+        printf(
+            '<textarea id="aivesese_agent_disclaimer" name="aivesese_agent_disclaimer" rows="4" class="large-text">%s</textarea>',
+            esc_textarea($value)
+        );
+
+        echo '<p class="description">Shown at the start of every assistant chat. Use it for compliance, disclosure, or store-specific guidance.</p>';
+    }
+
     /**
      * Handle license activation AJAX
      */
@@ -408,7 +514,7 @@ class AIVectorSearch_Admin_Interface
     public function enqueue_admin_assets($hook)
     {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if (!in_array($page, ['aivesese', 'aivesese-status', 'aivesese-sync', 'aivesese-analytics'], true)) {
+        if (!in_array($page, ['aivesese', 'aivesese-status', 'aivesese-sync', 'aivesese-analytics', 'aivesese-agent-analytics'], true)) {
             return;
         }
 
@@ -661,6 +767,17 @@ class AIVectorSearch_Admin_Interface
                 'manage_options',
                 'aivesese-analytics',
                 [AIVectorSearch_Analytics::instance(), 'render_analytics_page_template']
+            );
+        }
+
+        if (class_exists('AIVectorSearch_Agent_Analytics')) {
+            add_submenu_page(
+                'aivesese',
+                'Agent Analytics',
+                'Agent Analytics',
+                'manage_options',
+                'aivesese-agent-analytics',
+                [AIVectorSearch_Agent_Analytics::instance(), 'render_analytics_page']
             );
         }
     }
@@ -1240,7 +1357,7 @@ class AIVectorSearch_Admin_Interface
         }
 
         // Analytics dashboard styles (only on analytics page)
-        if ($current_page === 'aivesese-analytics') {
+        if (in_array($current_page, ['aivesese-analytics', 'aivesese-agent-analytics'], true)) {
             wp_enqueue_style(
                 'aivesese-analytics-dashboard',
                 AIVESESE_PLUGIN_URL . 'assets/css/analytics-dashboard.css',
@@ -1346,7 +1463,8 @@ class AIVectorSearch_Admin_Interface
             'aivesese_page_aivesese',
             'aivesese_page_aivesese-status',
             'aivesese_page_aivesese-sync',
-            'aivesese_page_aivesese-analytics'
+            'aivesese_page_aivesese-analytics',
+            'aivesese_page_aivesese-agent-analytics'
         ];
 
         if (!$screen || !in_array($screen->id, $allowed_screens, true)) {
@@ -1391,6 +1509,7 @@ class AIVectorSearch_Admin_Interface
             'aivesese_page_aivesese-status',
             'aivesese_page_aivesese-sync',
             'aivesese_page_aivesese-analytics',
+            'aivesese_page_aivesese-agent-analytics',
             'plugins'
         ];
 

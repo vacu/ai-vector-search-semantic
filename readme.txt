@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.9.4
 Woocommerce tested up to: 10.5.3
 Requires PHP: 8.0
-Stable Tag: 1.0.3
+Stable Tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,6 +47,13 @@ Let us handle everything. Simply activate with your license key and we manage th
 * **Multiple Display Options** - Use shortcodes, Gutenberg blocks, or Elementor widgets anywhere on your site
 * **Category-Aware** - Recommendations understand product relationships and categories
 
+**Managed Storefront Assistant:**
+* **Product & Order Help** - Managed API mode can expose an AI assistant for product discovery and verified order-status questions
+* **Curated Model Selection** - Choose from managed assistant models provided by your API plan
+* **Frontend Launcher or Shortcode** - Show the assistant as a floating launcher or embed it with `[aivesese_agent]`
+* **Catalog-Safe Responses** - Assistant product suggestions are limited to synced WooCommerce catalog items
+* **Custom Disclaimer** - Show store-specific compliance or guidance text at the start of every chat
+
 **Search Analytics Dashboard:**
 * Track search volume, success rates, and click-through rates
 * Filter analytics by year or month to review trends for specific periods
@@ -55,6 +62,11 @@ Let us handle everything. Simply activate with your license key and we manage th
 * Export analytics data for the selected reporting period
 * Clear analytics data from the dashboard when you need to reset reporting
 * Make data-driven merchandising decisions
+
+**Agent Analytics Dashboard:**
+* Track assistant sessions, turns, product impressions, add-to-cart clicks, and order verification events
+* Review top assistant intents and recent events from a dedicated admin screen
+* Separate assistant analytics from storefront search analytics for cleaner reporting
 
 **Professional Setup & Management:**
 * **WP-CLI Commands** - Professional schema installation, testing, and product sync via command line
@@ -114,6 +126,7 @@ Built by developers for developers, with comprehensive documentation, WP-CLI sup
 5. **(Optional) Run a product sync** from **AI Vector Search -> Sync Products** or with `wp aivs sync-products` when using Self-Hosted Supabase or Managed API mode.
 6. **(Optional) Enable Search Autocomplete** in settings to show product suggestions, matching terms, and categories in frontend search dropdowns.
 7. **(Optional) Run a field-only sync** from **AI Vector Search -> Sync Products** when you need to refresh prices, stock, or cost values without a full catalog sync.
+8. **(Optional) Enable Agent Assistant** in Managed API mode, choose an available model, and place `[aivesese_agent]` anywhere you want an embedded assistant.
 
 ### Command Line Tools (WP-CLI)
 
@@ -148,13 +161,14 @@ You can also trigger schema installation from the admin UI; both paths use the e
 5. Status page showing store health overview and configuration summary.
 6. Sync Products page with browser-driven batch progress, full sync controls, field-only sync actions, and embeddings generation options.
 7. Frontend autocomplete dropdown showing product matches, suggested terms, category links, and a view-all-results action.
-8. Setup guide for manual and WP-CLI installation, including PostgreSQL connection and OpenAI configuration.
+8. Managed storefront assistant with product cards, add-to-cart actions, and verified order-status support.
+9. Agent Analytics dashboard with sessions, turns, top intents, and recent assistant events.
 
 == ❓ Frequently Asked Questions ==
 
 = What are the connection modes? =
 
-Lite mode runs locally and is enabled by default. Switch to self-hosted Supabase when you want scalable vector search on your own infrastructure, or activate the managed API service with your license key when you prefer a fully hosted stack. You can change modes in **Settings  AI Supabase** and the plugin will guide you through any extra steps (keys, schema install, or product sync).
+Lite mode runs locally and is enabled by default. Switch to self-hosted Supabase when you want scalable vector search on your own infrastructure, or activate the managed API service with your license key when you prefer a fully hosted stack. Managed API mode can also expose the optional storefront assistant when your plan includes it. You can change modes in **Settings  AI Supabase** and the plugin will guide you through any extra steps (keys, schema install, product sync, or assistant setup).
 
 = When should I use each connection mode? =
 
@@ -199,6 +213,10 @@ Your product data remains in your Supabase project - you have full control. The 
 
 The plugin only syncs product data (names, descriptions, prices, etc.) - no personal customer information. When semantic search is enabled, product text is processed by OpenAI according to their privacy policy.
 
+= How does the Agent Assistant work? =
+
+The assistant is available only in Managed API mode on plans that include assistant access. It uses your synced catalog for product suggestions and verified customer context for order-status requests, and it can be displayed with a floating launcher or the `[aivesese_agent]` shortcode.
+
 = Can I use this on multiple stores? =
 
 Yes! Each store gets its own unique Store ID, allowing multiple WooCommerce sites to use the same Supabase project while keeping data separate.
@@ -227,6 +245,7 @@ You can show AI-powered recommendations based on cart contents using:
 - Categories, tags, and custom attributes
 - Prices (regular, sale, cost) and stock status
 - Product images (URLs only) and ratings
+- In managed assistant mode, verified customer order summaries may be sent for order-status assistance
 
 ### What Data is NOT Synced?
 - Customer information
@@ -259,7 +278,15 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == 📝 Changelog ==
 
-= 1.0.3 (Latest) =
+= 1.1.0 (Latest) =
+* **New:** Managed storefront assistant for product discovery and verified order-status requests in Managed API mode
+* **New:** Frontend assistant launcher and `[aivesese_agent]` shortcode with product cards and add-to-cart actions
+* **New:** Agent settings for enable/disable, managed model selection, and a customizable chat disclaimer
+* **New:** Dedicated Agent Analytics dashboard with sessions, turns, top intents, and recent assistant events
+* **New:** Separate agent analytics database table and frontend event tracking for assistant usage
+* **Update:** Managed API status parsing now exposes assistant availability, plan-gated features, and curated model lists
+
+= 1.0.3 =
 * **New:** Search Analytics dashboard now supports year and month filters for focused reporting periods
 * **New:** Admins can clear all analytics data directly from the dashboard with nonce protection and confirmation
 * **Update:** CSV exports now respect the selected analytics period
@@ -434,7 +461,10 @@ All communication uses HTTPS. You maintain full control over your API keys and c
 
 == ⬆️ Upgrade Notice ==
 
-= 1.0.3 (Latest) =
+= 1.1.0 (Latest) =
+Adds the managed storefront assistant, assistant settings and shortcode support, curated assistant model selection, and a dedicated Agent Analytics dashboard for assistant sessions, intents, product impressions, and order-status events.
+
+= 1.0.3 =
 Adds year/month analytics filtering, period-aware CSV exports, a protected clear-analytics action, and dashboard polish for labels, notices, and escaped output.
 
 = 1.0.2 =
@@ -546,6 +576,10 @@ Bug fixes for embedding generation and statistics. Recommended update for semant
 * Shortcode: `[aivs_cart_recommendations]`
 * Gutenberg Block: Available in block editor
 * Elementor Widget: Drag and drop widget
+
+**Agent Assistant:**
+* Shortcode: `[aivesese_agent]`
+* Automatic floating launcher: Available when Agent Assistant is enabled in Managed API mode
 
 **Similar Products:**
 Automatically displayed on product pages when recommendations are enabled.

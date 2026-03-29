@@ -87,6 +87,63 @@ class AIVectorSearch_API_Client
         return $this->normalize_status_payload($data);
     }
 
+    public function get_agent_status(bool $force_refresh = false): array
+    {
+        $cache_key = 'aivesese_api_agent_status';
+        if (!$force_refresh) {
+            $cached = get_transient($cache_key);
+            if (is_array($cached)) {
+                return $cached;
+            }
+        }
+
+        $status = $this->get_status();
+        $features = is_array($status['features'] ?? null) ? $status['features'] : [];
+        $models = is_array($status['agent_models'] ?? null) ? $status['agent_models'] : [];
+
+        $agent_status = [
+            'enabled' => !empty($features['agent_assistant']),
+            'features' => $features,
+            'models' => $models,
+            'reason' => !empty($features['agent_assistant']) ? '' : 'Your current managed API plan does not include the assistant.',
+        ];
+
+        set_transient($cache_key, $agent_status, 5 * MINUTE_IN_SECONDS);
+        return $agent_status;
+    }
+
+    public function get_agent_models(): array
+    {
+        $response = $this->request('GET', '/agent/models');
+        if (is_wp_error($response)) {
+            return [];
+        }
+
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        if (empty($data['success']) || !is_array($data['data'] ?? null)) {
+            return [];
+        }
+
+        return $data['data'];
+    }
+
+    public function send_agent_message(array $payload): array
+    {
+        $response = $this->request('POST', '/agent/chat', $payload);
+        if (is_wp_error($response)) {
+            return [
+                'success' => false,
+                'error' => $response->get_error_message(),
+            ];
+        }
+
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        return is_array($data) ? $data : [
+            'success' => false,
+            'error' => 'Invalid agent response',
+        ];
+    }
+
     /**
      * Full-text search via API
      */
@@ -417,6 +474,14 @@ class AIVectorSearch_API_Client
 
         if (!isset($status['api_calls_today']) && isset($data['api_calls_today'])) {
             $status['api_calls_today'] = $data['api_calls_today'];
+        }
+
+        if (!isset($status['features']) && isset($data['features']) && is_array($data['features'])) {
+            $status['features'] = $data['features'];
+        }
+
+        if (!isset($status['agent_models']) && isset($data['agent_models']) && is_array($data['agent_models'])) {
+            $status['agent_models'] = $data['agent_models'];
         }
 
         return $status;
