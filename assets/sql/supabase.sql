@@ -402,3 +402,162 @@ alter table products
       else null
     end
   ) stored;
+
+/* v1.1.0 - Advanced merchandising analytics and bundle intelligence */
+create table if not exists merchandising_daily_metrics (
+  id bigserial primary key,
+  store_id uuid not null,
+  metric_date date not null,
+  product_id bigint not null,
+  surface text not null default 'all',
+  impressions int not null default 0,
+  clicks int not null default 0,
+  add_to_carts int not null default 0,
+  attributed_orders int not null default 0,
+  attributed_revenue numeric(12,2) not null default 0,
+  attributed_margin numeric(12,2) not null default 0,
+  demand_score numeric(10,4) not null default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(store_id, metric_date, product_id, surface)
+);
+
+create table if not exists bundle_candidates (
+  id bigserial primary key,
+  store_id uuid not null,
+  anchor_product_id bigint not null,
+  bundled_product_id bigint not null,
+  source text not null default 'orders',
+  support_count int not null default 0,
+  confidence_score numeric(10,4) not null default 0,
+  attach_rate numeric(10,4) not null default 0,
+  bundle_score numeric(10,4) not null default 0,
+  ai_label text,
+  metadata jsonb,
+  last_seen_at timestamptz default now(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(store_id, anchor_product_id, bundled_product_id, source)
+);
+
+create index if not exists idx_merch_metrics_store_product
+  on merchandising_daily_metrics(store_id, product_id, surface, metric_date desc);
+
+create index if not exists idx_bundle_candidates_store_anchor
+  on bundle_candidates(store_id, anchor_product_id, bundle_score desc);
+
+create or replace function business_ranked_search(
+  search_store_id uuid,
+  search_term text,
+  search_limit integer default 20
+)
+returns table (woocommerce_id bigint, business_score numeric, base_rank numeric)
+language sql stable as $$
+with base as (
+  select p.woocommerce_id,
+         ts_rank_cd(p.ts_index, websearch_to_tsquery('simple', search_term), 32) as base_rank,
+         coalesce(p.margin / 100.0, 0) as margin_score,
+         least(coalesce(p.sold_count, 0) / 100.0, 1.0) as sales_score,
+         coalesce((
+           select avg(m.demand_score)
+           from merchandising_daily_metrics m
+           where m.store_id = p.store_id
+             and m.product_id = p.woocommerce_id
+             and m.surface in ('search', 'all')
+         ), 0) as demand_score
+  from products p
+  where p.store_id = search_store_id
+    and p.status = 'publish'
+    and p.ts_index @@ websearch_to_tsquery('simple', search_term)
+)
+select woocommerce_id,
+       ((base_rank * 0.65) + (sales_score * 0.15) + (margin_score * 0.10) + (demand_score * 0.10))::numeric as business_score,
+       base_rank::numeric
+from base
+order by business_score desc, base_rank desc
+limit search_limit;
+$$;
+
+create or replace function business_ranked_similar_products(
+  search_store_id uuid,
+  prod_wc_id bigint,
+  k int default 8
+)
+returns table (woocommerce_id bigint, business_score numeric)
+language sql stable as $$
+with ref as (
+  select store_id, categories, embedding
+  from products
+  where store_id = search_store_id
+    and woocommerce_id = prod_wc_id
+  limit 1
+),
+base as (
+  select p.woocommerce_id,
+         (1 - (p.embedding <=> r.embedding)) as relevance_score,
+         coalesce(p.margin / 100.0, 0) as margin_score,
+         least(coalesce(p.sold_count, 0) / 100.0, 1.0) as sales_score,
+         coalesce((
+           select avg(m.demand_score)
+           from merchandising_daily_metrics m
+           where m.store_id = p.store_id
+             and m.product_id = p.woocommerce_id
+             and m.surface in ('recommendations', 'all')
+         ), 0) as demand_score
+  from products p, ref r
+  where p.store_id = r.store_id
+    and p.woocommerce_id <> prod_wc_id
+    and p.status = 'publish'
+    and p.stock_status = 'in'
+    and p.categories && r.categories
+    and p.embedding is not null
+    and r.embedding is not null
+)
+select woocommerce_id,
+       ((relevance_score * 0.65) + (sales_score * 0.15) + (margin_score * 0.10) + (demand_score * 0.10))::numeric as business_score
+from base
+where relevance_score >= 0.35
+order by business_score desc
+limit k;
+$$;
+
+create or replace function bundle_recommendations(
+  search_store_id uuid,
+  cart bigint[],
+  p_k int default 4
+)
+returns table (woocommerce_id bigint, bundle_score numeric, source text, ai_label text)
+language sql stable as $$
+select bc.bundled_product_id as woocommerce_id,
+       bc.bundle_score,
+       bc.source,
+       bc.ai_label
+from bundle_candidates bc
+join products p
+  on p.store_id = bc.store_id
+ and p.woocommerce_id = bc.bundled_product_id
+where bc.store_id = search_store_id
+  and bc.anchor_product_id = any(cart)
+  and bc.bundled_product_id <> all(cart)
+  and p.status = 'publish'
+  and p.stock_status = 'in'
+order by bc.bundle_score desc, bc.support_count desc
+limit p_k;
+$$;
+
+create or replace function merchandising_summary(check_store_id uuid)
+returns table (
+  influenced_searches bigint,
+  assisted_revenue numeric,
+  bundle_candidates bigint,
+  avg_demand_score numeric
+)
+language sql stable as $$
+select
+  coalesce(sum(impressions) filter (where surface in ('search', 'all')), 0) as influenced_searches,
+  coalesce(sum(attributed_revenue), 0) as assisted_revenue,
+  (select count(*) from bundle_candidates bc where bc.store_id = check_store_id) as bundle_candidates,
+  coalesce(avg(demand_score), 0) as avg_demand_score
+from merchandising_daily_metrics
+where store_id = check_store_id;
+$$;

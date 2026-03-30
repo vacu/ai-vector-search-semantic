@@ -8,6 +8,7 @@ class AIVectorSearch_Search_Handler {
     private static $instance = null;
     private $connection_manager;
     private $analytics;
+    private $merchandising;
 
     public static function instance() {
         if (self::$instance === null) {
@@ -19,6 +20,7 @@ class AIVectorSearch_Search_Handler {
     private function __construct() {
         $this->connection_manager = AIVectorSearch_Connection_Manager::instance();
         $this->analytics = AIVectorSearch_Analytics::instance();
+        $this->merchandising = AIVectorSearch_Merchandising::instance();
         $this->init_hooks();
     }
 
@@ -448,6 +450,7 @@ class AIVectorSearch_Search_Handler {
                 $ids = $this->search_sku($term, $limit);
             }
 
+            $ids = $this->merchandising->rank_product_ids($ids, 'search', ['term' => $term]);
             return array_slice($ids, 0, $limit);
         }
 
@@ -466,6 +469,7 @@ class AIVectorSearch_Search_Handler {
             $ids = $this->search_sku($term, $limit);
         }
 
+        $ids = $this->merchandising->rank_product_ids($ids, 'search', ['term' => $term]);
         return array_slice($ids, 0, $limit);
     }
 
@@ -493,6 +497,10 @@ class AIVectorSearch_Search_Handler {
         if (is_object($this->analytics)) {
             $this->analytics->track_search($term, $search_type, $product_ids);
         }
+
+        if (is_object($this->merchandising) && !empty($product_ids)) {
+            $this->merchandising->track_search_results($term, $product_ids, 'search');
+        }
     }
 
     /**
@@ -507,6 +515,14 @@ class AIVectorSearch_Search_Handler {
             // Track the click in analytics
             if (is_object($this->analytics)) {
                 $this->analytics->track_click($search_term, $product_id);
+            }
+
+            if (is_object($this->merchandising)) {
+                $this->merchandising->track_event('click', [
+                    'surface' => 'search',
+                    'search_term' => $search_term,
+                    'product_id' => $product_id,
+                ]);
             }
         }
     }

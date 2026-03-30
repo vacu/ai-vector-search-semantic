@@ -6,6 +6,7 @@ class AIVectorSearch_Recommendations {
 
     private static $instance = null;
     private $connection_manager;
+    private $merchandising;
     private $cart_recommendations_rendered = false;
 
     public static function instance() {
@@ -17,6 +18,7 @@ class AIVectorSearch_Recommendations {
 
     private function __construct() {
         $this->connection_manager = AIVectorSearch_Connection_Manager::instance();
+        $this->merchandising = AIVectorSearch_Merchandising::instance();
         $this->init_hooks();
     }
 
@@ -71,6 +73,8 @@ class AIVectorSearch_Recommendations {
         $similar_products = $this->connection_manager->get_similar_products($product_id, $limit);
 
         $ids = wp_list_pluck((array) $similar_products, 'woocommerce_id');
+        $ids = $this->merchandising->rank_product_ids($ids, 'recommendations', ['product_id' => $product_id]);
+        $this->merchandising->track_recommendations('similar_products', $ids, $product_id);
         return !empty($ids) ? $ids : $related;
     }
 
@@ -106,15 +110,46 @@ class AIVectorSearch_Recommendations {
         $columns = max(1, (int) $args['columns']);
         $wrapper_class = (string) $args['wrapper_class'];
 
-        // Use connection manager for recommendations
-        $recommendations = $this->connection_manager->get_recommendations($cart_ids, $limit);
+        // Use connection manager for recommendations.
+        // Local bundle candidates (mined from WP events) are only used in lite mode;
+        // in supabase/api mode the connection manager already calls the bundle_recommendations RPC.
+        $connection_mode = get_option('aivesese_connection_mode', 'lite');
+        // Use local bundle candidates for both lite and supabase-direct modes.
+        // In API mode the server manages bundles (once the write path exists).
+        // In supabase-direct mode the Supabase bundle_candidates table has no write
+        // path yet, so local mining is the only working source.
+        $use_local_bundles = $connection_mode !== 'api'
+            && get_option('aivesese_enable_bundle_recommendations', '1') === '1';
+        $bundle_candidates = $use_local_bundles
+            ? $this->merchandising->get_bundle_candidates_for_products($cart_ids, $limit)
+            : [];
+        $recommendations = !empty($bundle_candidates)
+            ? $bundle_candidates
+            : $this->connection_manager->get_recommendations($cart_ids, $limit);
 
         if (empty($recommendations)) {
             return '';
         }
 
+        $ranked_ids = $this->merchandising->rank_product_ids(wp_list_pluck((array) $recommendations, 'woocommerce_id'), 'recommendations', ['cart_ids' => $cart_ids]);
+        $map = [];
+        foreach ((array) $recommendations as $recommendation) {
+            if (!empty($recommendation['woocommerce_id'])) {
+                $map[(int) $recommendation['woocommerce_id']] = $recommendation;
+            }
+        }
+        $recommendations = [];
+        foreach ($ranked_ids as $product_id) {
+            if (isset($map[$product_id])) {
+                $recommendations[] = $map[$product_id];
+            } else {
+                $recommendations[] = ['woocommerce_id' => $product_id];
+            }
+        }
+        $this->merchandising->track_recommendations('cart_recommendations', $ranked_ids, !empty($cart_ids) ? (int) $cart_ids[0] : 0);
+
         ob_start();
-        $this->render_recommendations_html($recommendations, (string) $args['title'], $columns, $wrapper_class);
+        $this->render_recommendations_html($recommendations, (string) $args['title'], $columns, $wrapper_class, !empty($cart_ids) ? (int) $cart_ids[0] : 0);
         return ob_get_clean();
     }
 
@@ -122,7 +157,8 @@ class AIVectorSearch_Recommendations {
         array $recommendations,
         string $title = '',
         int $columns = 4,
-        string $wrapper_class = ''
+        string $wrapper_class = '',
+        int $anchor_product_id = 0
     ) {
         if ($title) {
             echo '<h3>' . esc_html($title) . '</h3>';
@@ -140,14 +176,18 @@ class AIVectorSearch_Recommendations {
                 continue;
             }
 
-            $this->render_product_item($product);
+            $this->render_product_item($product, $wrapper_class !== '' ? $wrapper_class : 'recommendation', $anchor_product_id);
         }
 
         echo '</ul>';
     }
 
-    private function render_product_item(WC_Product $product) {
-        $permalink = get_permalink($product->get_id());
+    private function render_product_item(WC_Product $product, string $surface = 'recommendation', int $anchor_product_id = 0) {
+        $permalink = add_query_arg([
+            'from_recommendation' => '1',
+            'recommendation_surface' => $surface,
+            'anchor_product_id' => $anchor_product_id,
+        ], get_permalink($product->get_id()));
         $image = $product->get_image();
         $title = $product->get_name();
         $price = $product->get_price_html();

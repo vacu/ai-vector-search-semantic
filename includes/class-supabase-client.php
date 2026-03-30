@@ -300,6 +300,18 @@ class AIVectorSearch_Supabase_Client {
             return [];
         }
 
+        if (get_option('aivesese_enable_bundle_recommendations', '1') === '1') {
+            $bundle_result = $this->request('POST', '/rest/v1/rpc/bundle_recommendations', [
+                'search_store_id' => $store,
+                'cart' => $cart_ids,
+                'p_k' => $limit,
+            ], [], 'bundle_recs_' . md5(wp_json_encode($cart_ids)), 60);
+
+            if (!is_wp_error($bundle_result) && !empty($bundle_result)) {
+                return $bundle_result;
+            }
+        }
+
         $result = $this->request('POST', '/rest/v1/rpc/get_recommendations', [
             'store_id' => $store,
             'cart' => $cart_ids,
