@@ -16,6 +16,7 @@ class AIVectorSearch_Plugin {
     private $recommendations_integrations;
     private $admin_interface;
     private $analytics;
+    private $merchandising;
     private $agent_analytics;
     private $agent;
 
@@ -38,6 +39,7 @@ class AIVectorSearch_Plugin {
         $this->api_client = AIVectorSearch_API_Client::instance();
         $this->openai_client = AIVectorSearch_OpenAI_Client::instance();
         $this->analytics = AIVectorSearch_Analytics::instance();
+        $this->merchandising = AIVectorSearch_Merchandising::instance();
         $this->agent_analytics = AIVectorSearch_Agent_Analytics::instance();
         $this->product_sync = AIVectorSearch_Product_Sync::instance();
         $this->search_handler = AIVectorSearch_Search_Handler::instance();
@@ -97,6 +99,25 @@ class AIVectorSearch_Plugin {
             'aivesese_enable_agent' => '0',
             'aivesese_agent_model' => 'gpt-4.1-mini',
             'aivesese_agent_disclaimer' => 'AI-generated responses use your synced catalog and verified customer order data. Review product details and checkout information before purchasing.',
+            'aivesese_enable_business_ranking' => '1',
+            'aivesese_enable_business_ranking_search' => '1',
+            'aivesese_enable_business_ranking_recommendations' => '1',
+            'aivesese_business_ranking_weights' => wp_json_encode([
+                'relevance' => 0.65,
+                'sales' => 0.15,
+                'margin' => 0.10,
+                'demand' => 0.10,
+            ]),
+            'aivesese_business_ranking_relevance_floor' => '0.35',
+            'aivesese_enable_bundle_recommendations' => '1',
+            'aivesese_bundle_source_mode' => 'orders_carts',
+            'aivesese_bundle_thresholds' => wp_json_encode([
+                'min_support' => 2,
+                'min_confidence' => 0.15,
+                'top_n' => 8,
+            ]),
+            'aivesese_merchandising_attribution_window_days' => '7',
+            'aivesese_enable_cart_telemetry' => '0',
         ];
 
         foreach ($defaults as $option => $default_value) {
@@ -106,6 +127,7 @@ class AIVectorSearch_Plugin {
         }
 
         $this->analytics->create_table();
+        $this->merchandising->create_tables();
         $this->agent_analytics->create_table();
 
         // Clear any existing caches
@@ -119,6 +141,7 @@ class AIVectorSearch_Plugin {
         // Clear plugin caches
         $this->clear_plugin_caches();
         wp_clear_scheduled_hook('aivs_cleanup_analytics');
+        wp_clear_scheduled_hook('aivs_refresh_merchandising_metrics');
     }
 
     private function clear_plugin_caches() {

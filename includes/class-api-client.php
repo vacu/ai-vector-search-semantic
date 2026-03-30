@@ -284,6 +284,54 @@ class AIVectorSearch_API_Client
     }
 
     /**
+     * Push locally-aggregated daily metrics to the API so Supabase RPCs
+     * have a demand signal. Sends in chunks of 500 rows.
+     */
+    public function push_merchandising_metrics(array $rows): bool
+    {
+        if (empty($rows)) {
+            return true;
+        }
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            $response = $this->request('POST', '/merchandising/metrics', ['metrics' => $chunk]);
+            if (is_wp_error($response)) {
+                return false;
+            }
+            $data = json_decode(wp_remote_retrieve_body($response), true);
+            if (empty($data['success'])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Push locally-mined bundle candidates to the API so the
+     * bundle_recommendations Supabase RPC has data to return.
+     */
+    public function push_bundle_candidates(array $rows): bool
+    {
+        if (empty($rows)) {
+            return true;
+        }
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            $response = $this->request('POST', '/merchandising/bundles', ['bundles' => $chunk]);
+            if (is_wp_error($response)) {
+                return false;
+            }
+            $data = json_decode(wp_remote_retrieve_body($response), true);
+            if (empty($data['success'])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Get cart recommendations
      */
     public function get_cart_recommendations(array $cart_ids, int $limit = 4): array

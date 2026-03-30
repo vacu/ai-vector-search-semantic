@@ -12,6 +12,7 @@ class AIVectorSearchAutocomplete {
         this.searchNonce = config.searchNonce || '';
         this.trackingNonce = config.trackingNonce || '';
         this.autocompleteEnabled = config.autocompleteEnabled === true;
+        this.merchSessionId = window.sessionStorage ? (window.sessionStorage.getItem('aivsMerchSession') || '') : '';
         this.searchContainerSelector = config.searchContainerSelector
             || '.widget_product_search, .woocommerce-product-search';
         this.searchInputSelector = config.searchInputSelector
@@ -181,6 +182,14 @@ class AIVectorSearchAutocomplete {
         resultsContainer.replaceChildren(fragment);
         resultsContainer.style.display = 'block';
         this.initResultInteractions(resultsContainer, query);
+        products.forEach((result, index) => {
+            this.sendMerchandisingEvent('impression', {
+                surface: 'search',
+                product_id: result.id,
+                search_term: query,
+                position_index: index + 1
+            });
+        });
     }
 
     buildResultItemNode(result, query, index) {
@@ -376,6 +385,7 @@ class AIVectorSearchAutocomplete {
             product_id: productId,
             result_index: resultIndex
         });
+
     }
 
     sendAnalyticsEvent(eventType, data) {
@@ -390,6 +400,35 @@ class AIVectorSearchAutocomplete {
                 action: 'aivs_track_event',
                 event_type: eventType,
                 event_data: JSON.stringify(data),
+                nonce: this.trackingNonce
+            })
+        }).catch(() => {});
+    }
+
+    sendMerchandisingEvent(eventType, data) {
+        if (!this.ajaxUrl) {
+            return;
+        }
+
+        if (!this.merchSessionId && window.crypto?.randomUUID) {
+            this.merchSessionId = window.crypto.randomUUID();
+            if (window.sessionStorage) {
+                window.sessionStorage.setItem('aivsMerchSession', this.merchSessionId);
+            }
+        }
+
+        fetch(this.ajaxUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                action: 'aivs_merch_track',
+                event_type: eventType,
+                surface: data.surface || 'search',
+                product_id: data.product_id || '',
+                search_term: data.search_term || '',
+                anchor_product_id: data.anchor_product_id || '',
+                position_index: data.position_index ?? '',
+                session_id: this.merchSessionId || '',
                 nonce: this.trackingNonce
             })
         }).catch(() => {});

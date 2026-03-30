@@ -35,6 +35,7 @@ require_once AIVESESE_PLUGIN_PATH . 'includes/class-recommendations.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-recommendations-integrations.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-admin-interface.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-analytics.php';
+require_once AIVESESE_PLUGIN_PATH . 'includes/class-merchandising.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-agent-analytics.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-agent.php';
 require_once AIVESESE_PLUGIN_PATH . 'includes/class-plugin.php';
@@ -189,6 +190,9 @@ function aivesese_update_database()
     // Create/update analytics table
     $analytics = AIVectorSearch_Analytics::instance();
     $analytics->create_table();
+
+    $merchandising = AIVectorSearch_Merchandising::instance();
+    $merchandising->create_tables();
 
     $agent_analytics = AIVectorSearch_Agent_Analytics::instance();
     $agent_analytics->create_table();

@@ -79,6 +79,16 @@ class AIVectorSearch_Admin_Interface
             'enable_cart_below' => 'Below-cart recommendations',
             'enable_woodmart_integration' => 'Woodmart live search integration',
             'enable_search_autocomplete' => 'Search autocomplete',
+            'enable_business_ranking' => 'Enable business ranking',
+            'enable_business_ranking_search' => 'Enable business ranking for search',
+            'enable_business_ranking_recommendations' => 'Enable business ranking for recommendations',
+            'business_ranking_weights' => 'Business ranking weights',
+            'business_ranking_relevance_floor' => 'Business ranking relevance floor',
+            'enable_bundle_recommendations' => 'Enable bundle recommendations',
+            'bundle_source_mode' => 'Bundle source mode',
+            'bundle_thresholds' => 'Bundle thresholds',
+            'merchandising_attribution_window_days' => 'Merchandising attribution window',
+            'enable_cart_telemetry' => 'Enable cart telemetry',
             'enable_agent' => 'Enable Agent Assistant',
             'agent_model' => 'Agent Model',
             'agent_disclaimer' => 'Agent Disclaimer',
@@ -109,6 +119,11 @@ class AIVectorSearch_Admin_Interface
             'search_results_limit' => [$this, 'sanitize_search_results_limit'],
             'agent_model' => 'sanitize_text_field',
             'agent_disclaimer' => [$this, 'sanitize_agent_disclaimer'],
+            'business_ranking_weights' => [$this, 'sanitize_json_settings'],
+            'business_ranking_relevance_floor' => [$this, 'sanitize_float_0_1'],
+            'bundle_source_mode' => 'sanitize_text_field',
+            'bundle_thresholds' => [$this, 'sanitize_json_settings'],
+            'merchandising_attribution_window_days' => 'absint',
             'lite_index_limit' => 'absint',
             'lite_stopwords' => [$this, 'sanitize_lite_stopwords'],
             'lite_synonyms' => [$this, 'sanitize_lite_synonyms'],
@@ -136,11 +151,11 @@ class AIVectorSearch_Admin_Interface
         }
 
         // Special handling for checkboxes
-        if (in_array($id, ['enable_search', 'semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration', 'enable_search_autocomplete', 'enable_agent'], true)) {
+        if (in_array($id, ['enable_search', 'semantic_toggle', 'auto_sync', 'enable_pdp_similar', 'enable_cart_below', 'enable_woodmart_integration', 'enable_search_autocomplete', 'enable_agent', 'enable_business_ranking', 'enable_business_ranking_search', 'enable_business_ranking_recommendations', 'enable_bundle_recommendations', 'enable_cart_telemetry'], true)) {
             $config['sanitize_callback'] = function ($v) {
                 return $v === '1' ? '1' : '0';
             };
-            $config['default'] = in_array($id, ['enable_woodmart_integration', 'enable_search_autocomplete', 'enable_agent'], true) ? '0' : '1';
+            $config['default'] = in_array($id, ['enable_woodmart_integration', 'enable_search_autocomplete', 'enable_agent', 'enable_cart_telemetry'], true) ? '0' : '1';
         }
 
         register_setting('aivesese_settings', "aivesese_{$id}", $config);
@@ -186,6 +201,22 @@ class AIVectorSearch_Admin_Interface
         }
 
         return sanitize_textarea_field(wp_unslash($value));
+    }
+
+    public function sanitize_json_settings($value): string
+    {
+        if (!is_string($value)) {
+            return '';
+        }
+
+        $decoded = json_decode(wp_unslash($value), true);
+        return is_array($decoded) ? wp_json_encode($decoded) : '';
+    }
+
+    public function sanitize_float_0_1($value): string
+    {
+        $number = max(0, min(1, (float) $value));
+        return (string) $number;
     }
 
     private function add_settings_fields()
@@ -269,6 +300,68 @@ class AIVectorSearch_Admin_Interface
             'aivesese_section'
         );
 
+        add_settings_field(
+            'aivesese_business_ranking_weights',
+            'Business Ranking Weights',
+            [$this, 'render_merchandising_json_field'],
+            'aivesese',
+            'aivesese_section',
+            [
+                'field_id' => 'business_ranking_weights',
+                'description' => 'JSON object with relevance, sales, margin, and demand weights.',
+            ]
+        );
+
+        add_settings_field(
+            'aivesese_business_ranking_relevance_floor',
+            'Business Ranking Relevance Floor',
+            [$this, 'render_merchandising_numeric_field'],
+            'aivesese',
+            'aivesese_section',
+            [
+                'field_id' => 'business_ranking_relevance_floor',
+                'min' => '0',
+                'max' => '1',
+                'step' => '0.01',
+                'description' => 'Only apply business boosts after a result reaches this relevance score.',
+            ]
+        );
+
+        add_settings_field(
+            'aivesese_bundle_source_mode',
+            'Bundle Source Mode',
+            [$this, 'render_bundle_source_mode_field'],
+            'aivesese',
+            'aivesese_section'
+        );
+
+        add_settings_field(
+            'aivesese_bundle_thresholds',
+            'Bundle Thresholds',
+            [$this, 'render_merchandising_json_field'],
+            'aivesese',
+            'aivesese_section',
+            [
+                'field_id' => 'bundle_thresholds',
+                'description' => 'JSON object with min_support, min_confidence, and top_n.',
+            ]
+        );
+
+        add_settings_field(
+            'aivesese_merchandising_attribution_window_days',
+            'Merchandising Attribution Window',
+            [$this, 'render_merchandising_numeric_field'],
+            'aivesese',
+            'aivesese_section',
+            [
+                'field_id' => 'merchandising_attribution_window_days',
+                'min' => '1',
+                'max' => '90',
+                'step' => '1',
+                'description' => 'Days to attribute orders and mine bundle candidates.',
+            ]
+        );
+
         // Feature toggles
         $checkbox_fields = [
             'enable_search' => 'Enable AI search - Use AI-powered results for store search',
@@ -278,6 +371,11 @@ class AIVectorSearch_Admin_Interface
             'enable_cart_below' => 'Below-cart recommendations - Show recommendations under cart',
             'enable_woodmart_integration' => 'Live search integration - Replace theme AJAX search with AI-powered product results (supports Woodmart &amp; Storefront)',
             'enable_search_autocomplete' => 'Search autocomplete - Enhance the dropdown with term suggestions and category links in addition to products',
+            'enable_business_ranking' => 'Enable business ranking - Blend relevance with sales, margin, and demand',
+            'enable_business_ranking_search' => 'Business ranking on search surfaces',
+            'enable_business_ranking_recommendations' => 'Business ranking on recommendation surfaces',
+            'enable_bundle_recommendations' => 'Enable bundle recommendations - Prefer frequent order/cart combinations',
+            'enable_cart_telemetry' => 'Enable cart telemetry - Track add-to-cart events for bundle mining',
         ];
 
         foreach ($checkbox_fields as $id => $label) {
@@ -428,6 +526,59 @@ class AIVectorSearch_Admin_Interface
         echo '<p class="description">Shown at the start of every assistant chat. Use it for compliance, disclosure, or store-specific guidance.</p>';
     }
 
+    public function render_merchandising_json_field(array $args): void
+    {
+        $field_id = (string) ($args['field_id'] ?? '');
+        $value = (string) get_option("aivesese_{$field_id}", '');
+        $description = (string) ($args['description'] ?? '');
+
+        printf(
+            '<textarea id="aivesese_%s" name="aivesese_%s" rows="4" class="large-text code">%s</textarea>',
+            esc_attr($field_id),
+            esc_attr($field_id),
+            esc_textarea($value)
+        );
+
+        if ($description !== '') {
+            echo '<p class="description">' . esc_html($description) . '</p>';
+        }
+    }
+
+    public function render_merchandising_numeric_field(array $args): void
+    {
+        $field_id = (string) ($args['field_id'] ?? '');
+        $value = (string) get_option("aivesese_{$field_id}", '');
+
+        printf(
+            '<input type="number" id="aivesese_%s" name="aivesese_%s" value="%s" min="%s" max="%s" step="%s" class="small-text" />',
+            esc_attr($field_id),
+            esc_attr($field_id),
+            esc_attr($value),
+            esc_attr((string) ($args['min'] ?? '0')),
+            esc_attr((string) ($args['max'] ?? '100')),
+            esc_attr((string) ($args['step'] ?? '1'))
+        );
+
+        if (!empty($args['description'])) {
+            echo '<p class="description">' . esc_html((string) $args['description']) . '</p>';
+        }
+    }
+
+    public function render_bundle_source_mode_field(): void
+    {
+        $value = (string) get_option('aivesese_bundle_source_mode', 'orders_carts');
+        echo '<select id="aivesese_bundle_source_mode" name="aivesese_bundle_source_mode">';
+        foreach ([
+            'orders_carts' => 'Orders + carts',
+            'orders' => 'Orders only',
+            'carts' => 'Carts only',
+        ] as $key => $label) {
+            echo '<option value="' . esc_attr($key) . '"' . selected($value, $key, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select>';
+        echo '<p class="description">Choose the primary signal used to mine bundle candidates.</p>';
+    }
+
     /**
      * Handle license activation AJAX
      */
@@ -514,7 +665,7 @@ class AIVectorSearch_Admin_Interface
     public function enqueue_admin_assets($hook)
     {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if (!in_array($page, ['aivesese', 'aivesese-status', 'aivesese-sync', 'aivesese-analytics', 'aivesese-agent-analytics'], true)) {
+        if (!in_array($page, ['aivesese', 'aivesese-status', 'aivesese-sync', 'aivesese-analytics', 'aivesese-agent-analytics', 'aivesese-merchandising'], true)) {
             return;
         }
 
@@ -778,6 +929,17 @@ class AIVectorSearch_Admin_Interface
                 'manage_options',
                 'aivesese-agent-analytics',
                 [AIVectorSearch_Agent_Analytics::instance(), 'render_analytics_page']
+            );
+        }
+
+        if (class_exists('AIVectorSearch_Merchandising')) {
+            add_submenu_page(
+                'aivesese',
+                'Merchandising Analytics',
+                'Merchandising',
+                'manage_options',
+                'aivesese-merchandising',
+                [AIVectorSearch_Merchandising::instance(), 'render_admin_page']
             );
         }
     }
@@ -1357,7 +1519,7 @@ class AIVectorSearch_Admin_Interface
         }
 
         // Analytics dashboard styles (only on analytics page)
-        if (in_array($current_page, ['aivesese-analytics', 'aivesese-agent-analytics'], true)) {
+        if (in_array($current_page, ['aivesese-analytics', 'aivesese-agent-analytics', 'aivesese-merchandising'], true)) {
             wp_enqueue_style(
                 'aivesese-analytics-dashboard',
                 AIVESESE_PLUGIN_URL . 'assets/css/analytics-dashboard.css',
@@ -1435,7 +1597,7 @@ class AIVectorSearch_Admin_Interface
         }
 
         // Analytics dashboard script (only on analytics page)
-        if ($current_page === 'aivesese-analytics') {
+        if (in_array($current_page, ['aivesese-analytics', 'aivesese-merchandising'], true)) {
             wp_enqueue_script(
                 'aivesese-analytics-dashboard',
                 AIVESESE_PLUGIN_URL . 'assets/js/analytics-dashboard.js',
@@ -1464,7 +1626,8 @@ class AIVectorSearch_Admin_Interface
             'aivesese_page_aivesese-status',
             'aivesese_page_aivesese-sync',
             'aivesese_page_aivesese-analytics',
-            'aivesese_page_aivesese-agent-analytics'
+            'aivesese_page_aivesese-agent-analytics',
+            'aivesese_page_aivesese-merchandising'
         ];
 
         if (!$screen || !in_array($screen->id, $allowed_screens, true)) {
@@ -1510,6 +1673,7 @@ class AIVectorSearch_Admin_Interface
             'aivesese_page_aivesese-sync',
             'aivesese_page_aivesese-analytics',
             'aivesese_page_aivesese-agent-analytics',
+            'aivesese_page_aivesese-merchandising',
             'plugins'
         ];
 
